@@ -133,6 +133,14 @@
       "message": "将 y 坐标增加 {DY}", "args": { "DY": { "type": "number", "default": 10 } },
       "ir": { "op": "motion.change_y", "dy": { "$arg": "DY" } } },
 
+    { "id": "core.motion.set_x", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "将 x 坐标设为 {X}", "args": { "X": { "type": "number", "default": 0 } },
+      "ir": { "op": "motion.set_x", "x": { "$arg": "X" } } },
+
+    { "id": "core.motion.set_y", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "将 y 坐标设为 {Y}", "args": { "Y": { "type": "number", "default": 0 } },
+      "ir": { "op": "motion.set_y", "y": { "$arg": "Y" } } },
+
     { "id": "core.motion.point_direction", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
       "message": "面向 {DIR} 方向", "args": { "DIR": { "type": "number", "default": 90 } },
       "ir": { "op": "motion.point_direction", "direction": { "$arg": "DIR" } } },

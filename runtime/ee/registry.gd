@@ -171,6 +171,17 @@ func _validate_cross_references() -> void:
 				_add_problem("error", "ext_version",
 					"扩展 %s 需要 %s %s，实际是 %d" % [eid, rid, rver, int(extensions[rid]["version"])], eid)
 
+	# 反向检查：有没有"声明了却没有积木使用"的孤儿 op。
+	# 孤儿会带来两个问题：白写一份实现、以及让人以为这个能力已经可用。
+	var referenced := {}
+	for bid in blocks:
+		for oid in collect_ops_in_template(blocks[bid].get("ir", {})):
+			referenced[oid] = true
+	for oid in ops:
+		if not referenced.has(oid):
+			_add_problem("warn", "op_orphan",
+				"op %s 没有任何积木使用它（要么删掉，要么补一个积木）" % oid, oid)
+
 
 # 从一个 ir 模板里收集所有 op 名（递归）。
 static func collect_ops_in_template(node: Variant, out: Array = []) -> Array:
