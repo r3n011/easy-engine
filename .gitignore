@@ -35,6 +35,8 @@ __pycache__/
 # ---- 编辑器 / 系统 ----
 .vscode/
 .idea/
+# Godot 运行项目时生成的缓存
+.godot/
 Thumbs.db
 desktop.ini
 .DS_Store
