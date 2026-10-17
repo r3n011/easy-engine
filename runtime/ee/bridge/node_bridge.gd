@@ -11,6 +11,7 @@ extends RefCounted
 
 var calls: Array = []          # 调用日志，测试用：[{ method, target, args }]
 var warnings: Array = []
+var runtime = null             # 由 Runtime.setup() 注入，供需要解析引用的实现使用
 
 func _log(method: String, target, args: Array) -> void:
 	calls.append({ "method": method, "target": target.id if target != null else "", "args": args })
@@ -51,6 +52,15 @@ func get_rotation(target) -> float:
 func set_rotation(target, radians_: float) -> void:
 	_log("set_rotation", target, [radians_])
 	target.state["rotation"] = radians_
+
+# 方向用 Scratch 约定（0=上 90=右）。视觉层负责换算成自己的角度。
+func get_direction(target) -> float:
+	_log("get_direction", target, [])
+	return float(target.state.get("direction", 90.0))
+
+func set_direction(target, degrees: float) -> void:
+	_log("set_direction", target, [degrees])
+	target.state["direction"] = degrees
 
 func get_scale_percent(target) -> float:
 	_log("get_scale_percent", target, [])
@@ -187,9 +197,12 @@ func clone_visual(target):
 
 # ---- 代码块（逃生舱②）------------------------------------------------
 
-# 默认实现：不执行，只登记。
-# 真实实现见 GodotBridge（M3）；无渲染环境下降级为一个明确的告警，
-# 而不是静默忽略——否则用户会以为代码跑了。
 func run_code(target, source: String) -> void:
 	_log("run_code", target, [source])
+	_execute_code(target, source)
+
+
+# 默认实现：**明确告警而不是静默忽略**——否则用户会以为代码跑了。
+# 真实实现在 GodotBridge 里覆写（见 _execute_code）。
+func _execute_code(_target, _source: String) -> void:
 	warnings.append("当前环境不支持「执行代码」积木（内容已记录，未执行）")

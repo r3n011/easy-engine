@@ -21,6 +21,10 @@ var lists := {}              # 局部列表 name -> Array
 var state := {}              # 桥自己用的可视状态（位置/大小/特效…）
 var scripts := []            # IR：这个目标拥有的脚本（帽子 op 的数组）
 
+# 视觉层对应的 Godot 节点（由 GodotBridge 填；无渲染环境保持 null）。
+# 放在这里而不是桥的字典里：目标与节点本来就一一对应，多一层映射只会多一处能不同步。
+var node: Node = null
+
 # 运行时
 var alive := true
 var threads := []            # 属于它的线程

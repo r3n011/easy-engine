@@ -1,0 +1,176 @@
+{
+  "formatVersion": 1,
+  "name": "演示：接苹果",
+  "generator": { "name": "手写（M3 演示）", "version": "1" },
+  "godotApiVersion": "4.7.2",
+  "extensions": [],
+
+  "stage": {
+    "size": [480, 360],
+    "background": "assets/bg.png",
+    "settings": {}
+  },
+
+  "globals": {
+    "variables": [ { "id": "g_score", "name": "分数", "value": 0 } ],
+    "lists": []
+  },
+
+  "nodes": [
+    {
+      "id": "Basket",
+      "name": "篮子",
+      "template": "SPRITE_2D",
+      "parent": "@stage",
+      "order": 1,
+      "transform": { "position": [0, -140], "rotation": 0, "scale": [100, 100] },
+      "visible": true,
+      "costumes": [ { "id": "c1", "name": "篮子", "asset": "assets/basket.png" } ],
+      "sounds": [],
+      "localVariables": [],
+
+      "scripts": [
+        {
+          "top": {
+            "block": "core.event.when_flag_clicked",
+            "inputs": {
+              "BODY": {
+                "stack": {
+                  "block": "core.control.forever",
+                  "inputs": {
+                    "BODY": {
+                      "stack": {
+                        "block": "core.motion.set_position",
+                        "inputs": {
+                          "X": { "value": { "block": "core.sensing.mouse_x", "inputs": {} } },
+                          "Y": { "value": -140 }
+                        },
+                        "next": {
+                          "block": "core.code.gdscript",
+                          "inputs": {
+                            "SRC": { "value": "if 分数 >= 5:\n\tnode.modulate = Color(1.0, 0.82, 0.35)\nelse:\n\tnode.modulate = Color(1, 1, 1)" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "Apple",
+      "name": "苹果",
+      "template": "SPRITE_2D",
+      "parent": "@stage",
+      "order": 2,
+      "transform": { "position": [0, 150], "rotation": 0, "scale": [100, 100] },
+      "visible": true,
+      "costumes": [ { "id": "c2", "name": "苹果", "asset": "assets/apple.png" } ],
+      "sounds": [],
+      "localVariables": [],
+
+      "scripts": [
+        {
+          "top": {
+            "block": "core.event.when_flag_clicked",
+            "inputs": {
+              "BODY": {
+                "stack": {
+                  "block": "core.data.set_var",
+                  "inputs": {
+                    "NAME": { "value": "分数" },
+                    "VALUE": { "value": 0 }
+                  },
+                  "next": {
+                    "block": "core.data.show_var",
+                    "inputs": {
+                      "NAME": { "value": "分数" },
+                      "MODE": { "value": "show" }
+                    },
+                    "next": {
+                      "block": "core.control.forever",
+                      "inputs": {
+                        "BODY": {
+                          "stack": {
+                            "block": "core.motion.change_y",
+                            "inputs": {
+                              "DY": {
+                                "value": {
+                                  "block": "core.operator.expression",
+                                  "inputs": {
+                                    "SRC": { "value": "-(3 + 分数 * 0.2)" }
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": "core.control.if",
+                              "inputs": {
+                                "COND": {
+                                  "value": {
+                                    "block": "core.sensing.touching",
+                                    "inputs": { "OTHER": { "value": "Basket" } }
+                                  }
+                                },
+                                "BODY": {
+                                  "stack": {
+                                    "block": "core.data.change_var",
+                                    "inputs": {
+                                      "NAME": { "value": "分数" },
+                                      "DELTA": { "value": 1 }
+                                    },
+                                    "next": {
+                                      "block": "core.motion.set_position",
+                                      "inputs": {
+                                        "X": { "value": { "block": "core.operator.random", "inputs": { "FROM": { "value": -200 }, "TO": { "value": 200 } } } },
+                                        "Y": { "value": 170 }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "next": {
+                                "block": "core.control.if",
+                                "inputs": {
+                                  "COND": {
+                                    "value": {
+                                      "block": "core.operator.lt",
+                                      "inputs": {
+                                        "A": { "value": { "block": "core.motion.y", "inputs": {} } },
+                                        "B": { "value": -180 }
+                                      }
+                                    }
+                                  },
+                                  "BODY": {
+                                    "stack": {
+                                      "block": "core.motion.set_position",
+                                      "inputs": {
+                                        "X": { "value": { "block": "core.operator.random", "inputs": { "FROM": { "value": -200 }, "TO": { "value": 200 } } } },
+                                        "Y": { "value": 170 }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+
+  "ext": {}
+}

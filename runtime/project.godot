@@ -8,8 +8,11 @@ config_version=5
 [application]
 
 config/name="Easy Engine Runtime"
-config/description="M1：.ee 项目格式、IR 定义与积木编译器"
+config/description="M1-M3：.ee 格式、IR、编译器、调度器、Godot 节点桥"
 config/features=PackedStringArray("4.7")
+boot_splash/image="res://brand/icon.png"
+boot_splash/bg_color=Color(0.06, 0.07, 0.1, 1)
+config/icon="res://brand/icon.png"
 
 [debug]
 

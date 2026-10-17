@@ -1,3 +1,5 @@
+<img src="assets/brand/logo-full.png" alt="Easy Engine" width="420">
+
 # Easy Engine
 
 **把 Godot 的能力，用 Scratch 积木的方式暴露出来让人编程。**
@@ -76,6 +78,42 @@ python tools\extract-ttr.py engine\godot   # 权威差集：源码文案 ↔ .po
 python tools\zh-todo.py engine\godot       # 筛出真·界面漏翻
 python tools\zh-apply.py                   # 回填（自动跳过已存在）
 ```
+
+## M3 进展：接上真实 Godot，跑出一个能玩的游戏
+
+```powershell
+powershell -File tools/run-demo.ps1 -WaitSec 10 -MoveMouse "500,600"
+```
+
+<img src="docs/shot-demo.png" alt="接苹果 Demo" width="520">
+
+**接苹果**：鼠标控制篮子，接住落下的苹果加分。画面全部由 Godot 真实渲染：
+天空渐变、太阳、草地、跟着鼠标走的篮子、落下的苹果，左上角是 Scratch 式的变量监视器。
+
+游戏里用到了**两条逃生舱**：
+
+| 逃生舱 | 在 Demo 里的表现 |
+|---|---|
+| **① 表达式** | 苹果下落速度随分数变快：`-(3 + 分数 * 0.2)` |
+| **② 代码块** | 5 分之后篮子变金色：`if 分数 >= 5: node.modulate = Color(1.0, 0.82, 0.35)` |
+
+**关键点：M2 定下的调度语义一行没改。** `runtime.gd` / `thread.gd` / `values.gd`
+在这次改动里**零修改**——只换了 `node_bridge` 的实现。这就是当初把"桥"单独隔一层的回报。
+
+坐标也只在桥里换算一次：位置 `Vector2(x, -y)`、方向 `deg_to_rad(direction - 90)`、
+大小 `percent/100`。积木、编译器、调度器、op 实现全都只用 Scratch 坐标。
+
+### 这一轮修掉的三个真 bug（都只有"真接上 Godot 才暴露"）
+
+1. **共享的 op 上下文被嵌套求值覆盖** —— `移到 x: 鼠标x y: -140` 里的 `y` 读到了错的对象，
+   导致所有角色堆在中间、分数每帧都涨
+2. **着色器把 Godot 的 `modulate` 盖掉了** —— 于是「执行代码」里改 `node.modulate` 看不见效果
+3. **表达式求值把线程当成了目标** —— 求值变量时去读 `thread.vars`，直接崩
+
+M2 的 84 项测试全盖不住这三个，因为它们都发生在"桥/集成"这一层。
+**这说明 M2 / M3 的边界划对了**：语义在 M2 测清，集成问题在 M3 暴露。
+
+规格与结果：[`docs/M3-TODO.md`](docs/M3-TODO.md)
 
 ## M2 进展：调度器跑通，`.ee` 能真正运行
 
@@ -181,7 +219,8 @@ M1 全部验收通过。
 - [x] **M0** 环境、源码、Godot 构建链路（SCons + MSVC 14.44 已打通）、**界面 100% 汉化**
 - [x] **M1** `.ee` 格式 / IR / 同步规则定稿，编译管线跑通，扩展机制实测可用
 - [x] **M2** 调度器（线程/让步/warp/广播/克隆体）+ 值语义 + 表达式求值器 + 节点桥（无渲染版）· 84 项测试全绿
-- [ ] M3 换掉节点桥接上真实 Godot 渲染 + 三条逃生舱（含真正执行代码）+ 自制积木 → 第一个可玩 Demo
+- [x] **M3** 接上真实 Godot 渲染 + 逃生舱①（表达式）+ 逃生舱②（真正执行代码）→ **可玩的接苹果 Demo**（docs/shot-demo.png）
+- [ ] M3.5 代码 ↔ 积木互通（GDScript → 积木）+ 自制积木
 - [ ] M4 fork scratch-gui 自研编辑器（L1 积木模式 / L2 场景模式）
 - [ ] M4.5 L3 引擎模式（Godot 编辑器插件 + 清理遗留痕迹）
 - [ ] M5 Windows 一键发布

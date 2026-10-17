@@ -40,3 +40,7 @@ __pycache__/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Godot 打开工程时给素材生成的导入文件（本项目通过 Image.load 直接读，
+# 不依赖导入流程；这些文件由编辑器随时重建）
+*.import

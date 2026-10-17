@@ -54,6 +54,8 @@ var _started_hats := []
 func setup(p_registry, p_bridge) -> void:
 	registry = p_registry
 	bridge = p_bridge
+	if bridge != null:
+		bridge.runtime = self
 	providers.clear()
 	errors.clear()
 	warnings.clear()
@@ -322,8 +324,17 @@ func _dispatch(t, op: Dictionary) -> Variant:
 		t.fail("op %s 没有实现（缺少 %s）" % [oid, method])
 		return null
 
+	# ★ 保存并恢复上下文：求值嵌套表达式时会递归进入 _dispatch，
+	#   如果共用同一个 _ctx 而不恢复，外层的 op/target 会被内层覆盖，
+	#   于是「移到 x: 鼠标x y: -140」里的 y 会读到错的对象（变成 0）。
+	#   这个 bug 只有真的用嵌套积木才会暴露，是回归测试盯的一个点。
+	var saved_op: Dictionary = _ctx.op
+	var saved_target = _ctx.target
 	_ctx.bind(self, t, op)
-	return provider.call(method, _ctx, op)
+	var result: Variant = provider.call(method, _ctx, op)
+	_ctx.op = saved_op
+	_ctx.target = saved_target
+	return result
 
 
 # 求值一个"值位置"的 IR：字面量直接返回，表达式 op 走派发

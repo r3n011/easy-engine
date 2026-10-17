@@ -181,7 +181,9 @@ func op_op_contains(ctx: OpContext, op: Dictionary) -> Variant:
 
 # 逃生舱①：受限表达式
 func op_op_expression(ctx: OpContext, op: Dictionary) -> Variant:
-	return runtime.eval_expression(Values.to_string_value(ctx.eval("source")), ctx.thread)
+	# 注意传的是 ctx.target（目标）而不是 ctx.thread（线程）——
+	# 表达式求值要按变量名去目标/全局里查，传错会把线程当成目标读。
+	return runtime.eval_expression(Values.to_string_value(ctx.eval("source")), ctx.target)
 
 
 # ============================================================ 变量
@@ -262,7 +264,7 @@ func op_list_show(ctx: OpContext, op: Dictionary) -> void:
 # 换算到 Godot：dx = sin(deg)，dy = -cos(deg)。
 
 func _direction_of(t) -> float:
-	return float(t.state.get("direction", 90.0))
+	return bridge.get_direction(t)
 
 func op_motion_move_steps(ctx: OpContext, op: Dictionary) -> void:
 	var t = ctx.resolve_target()
@@ -311,7 +313,7 @@ func op_motion_point_direction(ctx: OpContext, op: Dictionary) -> void:
 	var t = ctx.resolve_target()
 	if t == null:
 		return
-	t.state["direction"] = Values.to_number(ctx.eval("direction"))
+	bridge.set_direction(t, Values.to_number(ctx.eval("direction")))
 
 func op_motion_turn(ctx: OpContext, op: Dictionary) -> void:
 	var t = ctx.resolve_target()
@@ -321,7 +323,7 @@ func op_motion_turn(ctx: OpContext, op: Dictionary) -> void:
 	var delta := Values.to_number(ctx.eval("delta"))
 	if str(ctx.eval("mode")) == "ccw":
 		delta = -delta
-	t.state["direction"] = d + delta
+	bridge.set_direction(t, d + delta)
 
 # 碰到边缘就反弹：按舞台边界反射，并把位置推回边界内
 func op_motion_bounce(ctx: OpContext, _op: Dictionary) -> void:
@@ -346,7 +348,7 @@ func op_motion_bounce(ctx: OpContext, _op: Dictionary) -> void:
 		d = 180.0 - d
 		pos.y = clampf(pos.y, -half.y + size.y * 0.5, half.y - size.y * 0.5)
 	if hit_x or hit_y:
-		t.state["direction"] = d
+		bridge.set_direction(t, d)
 		bridge.set_position(t, pos)
 
 func op_motion_get_x(ctx: OpContext, _op: Dictionary) -> Variant:
