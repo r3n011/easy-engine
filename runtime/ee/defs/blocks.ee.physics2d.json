@@ -1,0 +1,49 @@
+{
+  "extension": "ee.physics2d",
+  "extensionVersion": 1,
+  "requires": [ { "id": "ee.core", "version": ">=1" } ],
+  "description": "物理 2D 扩展（M6 的第一批能力积木）。它只依赖 ee.core，用来演示「新增积木 = 新增定义文件」。",
+  "categories": [
+    { "id": "physics2d", "name": "物理 2D", "color": "#3B78E0" },
+    { "id": "physics2d.query", "name": "物理 2D · 检测", "color": "#5B8FE8" }
+  ],
+
+  "blocks": [
+    { "id": "ee.physics2d.apply_impulse", "version": 1, "category": "physics2d", "shape": "stack", "target": "@self",
+      "message": "给 {TARGET} 施加冲量 x: {X} y: {Y}",
+      "args": { "TARGET": { "type": "node", "default": "@self" },
+                "X": { "type": "number", "default": 0 }, "Y": { "type": "number", "default": -200 } },
+      "ir": { "op": "phy2d.apply_impulse", "target": { "$arg": "TARGET" },
+              "impulse": { "op": "vec2", "x": { "$arg": "X" }, "y": { "$arg": "Y" } } } },
+
+    { "id": "ee.physics2d.set_velocity", "version": 1, "category": "physics2d", "shape": "stack", "target": "@self",
+      "message": "将 {TARGET} 的速度设为 x: {X} y: {Y}",
+      "args": { "TARGET": { "type": "node", "default": "@self" },
+                "X": { "type": "number", "default": 100 }, "Y": { "type": "number", "default": 0 } },
+      "ir": { "op": "phy2d.set_velocity", "target": { "$arg": "TARGET" },
+              "velocity": { "op": "vec2", "x": { "$arg": "X" }, "y": { "$arg": "Y" } } } },
+
+    { "id": "ee.physics2d.set_gravity_scale", "version": 1, "category": "physics2d", "shape": "stack", "target": "@self",
+      "message": "将 {TARGET} 的重力倍率设为 {SCALE}",
+      "args": { "TARGET": { "type": "node", "default": "@self" }, "SCALE": { "type": "number", "default": 1 } },
+      "ir": { "op": "phy2d.set_gravity_scale", "target": { "$arg": "TARGET" }, "scale": { "$arg": "SCALE" } } },
+
+    { "id": "ee.physics2d.velocity_x", "version": 1, "category": "physics2d.query", "shape": "reporter", "target": "@self",
+      "message": "{TARGET} 的水平速度", "args": { "TARGET": { "type": "node", "default": "@self" } },
+      "ir": { "op": "phy2d.get_velocity_x", "target": { "$arg": "TARGET" } } },
+
+    { "id": "ee.physics2d.velocity_y", "version": 1, "category": "physics2d.query", "shape": "reporter", "target": "@self",
+      "message": "{TARGET} 的竖直速度", "args": { "TARGET": { "type": "node", "default": "@self" } },
+      "ir": { "op": "phy2d.get_velocity_y", "target": { "$arg": "TARGET" } } },
+
+    { "id": "ee.physics2d.is_on_floor", "version": 1, "category": "physics2d.query", "shape": "boolean", "target": "@self",
+      "message": "{TARGET} 在地面上 ?", "args": { "TARGET": { "type": "node", "default": "@self" } },
+      "ir": { "op": "phy2d.is_on_floor", "target": { "$arg": "TARGET" } } },
+
+    { "id": "ee.physics2d.raycast", "version": 1, "category": "physics2d.query", "shape": "boolean", "target": "@self",
+      "message": "{TARGET} 朝 {DIR} 方向 {DIST} 像素内有东西 ?",
+      "args": { "TARGET": { "type": "node", "default": "@self" }, "DIR": { "type": "number", "default": 90 },
+                "DIST": { "type": "number", "default": 64 } },
+      "ir": { "op": "phy2d.raycast_hit", "target": { "$arg": "TARGET" }, "direction": { "$arg": "DIR" }, "distance": { "$arg": "DIST" } } }
+  ]
+}

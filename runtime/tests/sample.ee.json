@@ -1,0 +1,185 @@
+{
+  "formatVersion": 1,
+  "name": "示例：会跳的小猫",
+  "generator": { "name": "手写（M1 验收）", "version": "0" },
+  "godotApiVersion": "4.7.2",
+  "extensions": [
+    { "id": "ee.physics2d", "version": ">=1" }
+  ],
+
+  "stage": {
+    "size": [480, 360],
+    "background": "assets/bg.png",
+    "settings": { "gravity": 980 }
+  },
+
+  "globals": {
+    "variables": [
+      { "id": "g_score", "name": "分数", "value": 0 }
+    ],
+    "lists": [
+      { "id": "g_bag", "name": "物品", "value": [] }
+    ]
+  },
+
+  "nodes": [
+    {
+      "id": "Player",
+      "name": "小猫",
+      "template": "CHARACTER_BODY_2D",
+      "parent": "@stage",
+      "order": 0,
+      "transform": { "position": [0, 0], "rotation": 0, "scale": [100, 100] },
+      "visible": true,
+      "costumes": [ { "id": "c1", "name": "默认", "asset": "assets/cat.png" } ],
+      "sounds": [ { "id": "s1", "name": "跳跃", "asset": "assets/jump.ogg" } ],
+      "localVariables": [ { "id": "l_hp", "name": "生命", "value": 3 } ],
+
+      "scripts": [
+        {
+          "top": {
+            "block": "core.event.when_flag_clicked",
+            "inputs": {
+              "BODY": {
+                "stack": {
+                  "block": "core.data.set_var",
+                  "inputs": {
+                    "NAME": { "value": "分数" },
+                    "VALUE": { "value": 0 }
+                  },
+                  "next": {
+                    "block": "core.control.repeat",
+                    "inputs": {
+                      "TIMES": { "value": 10 },
+                      "BODY": {
+                        "stack": {
+                          "block": "core.motion.move_steps",
+                          "inputs": { "STEPS": { "value": 10 } },
+                          "next": {
+                            "block": "core.control.if",
+                            "inputs": {
+                              "COND": {
+                                "value": {
+                                  "block": "core.sensing.touching",
+                                  "inputs": { "OTHER": { "value": "@mouse" } }
+                                }
+                              },
+                              "BODY": {
+                                "stack": {
+                                  "block": "core.data.change_var",
+                                  "inputs": {
+                                    "NAME": { "value": "分数" },
+                                    "DELTA": {
+                                      "value": {
+                                        "block": "core.operator.expression",
+                                        "inputs": { "SRC": { "value": "1 + 1" } }
+                                      }
+                                    }
+                                  },
+                                  "next": {
+                                    "block": "ee.physics2d.apply_impulse",
+                                    "inputs": {
+                                      "X": { "value": 0 },
+                                      "Y": { "value": -200 }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": "core.meta.set_property",
+                      "inputs": {
+                        "TARGET": { "value": "@self" },
+                        "PROP": { "value": "modulate" },
+                        "VALUE": { "value": "red" }
+                      },
+                      "next": {
+                        "block": "core.code.gdscript",
+                        "inputs": {
+                          "SRC": { "value": "print(\"结束，得分 = \", 分数)" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "top": {
+            "block": "core.event.when_key_pressed",
+            "inputs": {
+              "KEY": { "value": "space" },
+              "BODY": {
+                "stack": {
+                  "block": "core.control.if_else",
+                  "inputs": {
+                    "COND": {
+                      "value": {
+                        "block": "ee.physics2d.is_on_floor",
+                        "inputs": { "TARGET": { "value": "@self" } }
+                      }
+                    },
+                    "THEN": {
+                      "stack": {
+                        "block": "ee.physics2d.set_velocity",
+                        "inputs": { "X": { "value": 0 }, "Y": { "value": -420 } }
+                      }
+                    },
+                    "ELSE": {
+                      "stack": {
+                        "block": "core.looks.set_visible",
+                        "inputs": { "MODE": { "value": "show" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+
+      "ext": { "editorNote": "本运行时还不认识这个字段，用来验证往返不丢数据" }
+    },
+
+    {
+      "id": "Coin",
+      "name": "金币",
+      "template": "AREA_2D",
+      "parent": "@stage",
+      "order": 1,
+      "transform": { "position": [120, -60], "rotation": 0, "scale": [100, 100] },
+      "visible": true,
+      "costumes": [ { "id": "c2", "name": "金币", "asset": "assets/coin.png" } ],
+      "sounds": [],
+      "localVariables": [],
+      "scripts": [
+        {
+          "top": {
+            "block": "core.event.when_touching",
+            "inputs": {
+              "OTHER": { "value": "Player" },
+              "BODY": {
+                "stack": {
+                  "block": "core.data.change_var",
+                  "inputs": { "NAME": { "value": "分数" }, "DELTA": { "value": 1 } },
+                  "next": {
+                    "block": "core.control.delete_clone"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+
+  "ext": { "futureFeature": { "something": true } }
+}

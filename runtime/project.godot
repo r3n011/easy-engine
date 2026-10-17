@@ -1,0 +1,21 @@
+; Easy Engine 运行时（M1：项目格式 / IR / 编译器）
+;
+; 这不是游戏项目，而是"数据模型与编译管线"的宿主。
+; 用 --headless --script 方式跑验收工具。
+
+config_version=5
+
+[application]
+
+config/name="Easy Engine Runtime"
+config/description="M1：.ee 项目格式、IR 定义与积木编译器"
+config/features=PackedStringArray("4.7")
+
+[debug]
+
+gdscript/warnings/untyped_declaration=0
+gdscript/warnings/unsafe_property_access=0
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

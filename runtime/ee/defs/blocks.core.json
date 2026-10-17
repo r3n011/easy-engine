@@ -1,0 +1,455 @@
+{
+  "extension": "ee.core",
+  "extensionVersion": 1,
+  "description": "Easy Engine 核心积木定义。编辑器据此生成 Blockly 积木，运行时据此把积木编译成 IR。新增积木 = 新增定义文件，不需要改引擎代码。",
+  "categories": [
+    { "id": "event",    "name": "事件", "color": "#FFBF00" },
+    { "id": "control",  "name": "控制", "color": "#FFAB19" },
+    { "id": "motion",   "name": "运动", "color": "#4C97FF" },
+    { "id": "looks",    "name": "外观", "color": "#9966FF" },
+    { "id": "sound",    "name": "声音", "color": "#CF63CF" },
+    { "id": "sensing",  "name": "侦测", "color": "#5CB1D6" },
+    { "id": "operator", "name": "运算", "color": "#59C059" },
+    { "id": "data",     "name": "变量与列表", "color": "#FF8C1A" },
+    { "id": "meta",     "name": "Godot 通用", "color": "#0FBD8C" },
+    { "id": "code",     "name": "代码", "color": "#4C4C4C" }
+  ],
+
+  "blocks": [
+    { "id": "core.event.when_flag_clicked", "version": 1, "category": "event", "shape": "hat",
+      "message": "当 {ICON} 被点击", "args": {},
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "event.hat", "kind": "flag", "body": { "$branch": "BODY" } } },
+
+    { "id": "core.event.when_key_pressed", "version": 1, "category": "event", "shape": "hat",
+      "message": "当按下 {KEY} 键",
+      "args": { "KEY": { "type": "dropdown", "default": "space", "options": [
+        { "value": "space", "label": "空格" }, { "value": "up", "label": "上" }, { "value": "down", "label": "下" },
+        { "value": "left", "label": "左" }, { "value": "right", "label": "右" },
+        { "value": "any", "label": "任意" } ] } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "event.hat", "kind": "key", "params": { "key": { "$arg": "KEY" } }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.event.when_broadcast_received", "version": 1, "category": "event", "shape": "hat",
+      "message": "当接收到 {MSG}",
+      "args": { "MSG": { "type": "string", "default": "消息1" } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "event.hat", "kind": "broadcast", "params": { "message": { "$arg": "MSG" } }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.event.when_clone_start", "version": 1, "category": "event", "shape": "hat",
+      "message": "当作为克隆体启动时", "args": {},
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "event.hat", "kind": "clone_start", "body": { "$branch": "BODY" } } },
+
+    { "id": "core.event.when_touching", "version": 1, "category": "event", "shape": "hat",
+      "message": "当碰到 {OTHER}",
+      "args": { "OTHER": { "type": "node", "default": "@any_sprite" } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "event.hat", "kind": "touching", "params": { "other": { "$arg": "OTHER" } }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.event.broadcast", "version": 1, "category": "event", "shape": "stack",
+      "message": "广播 {MSG}", "args": { "MSG": { "type": "string", "default": "消息1" } },
+      "ir": { "op": "event.broadcast", "message": { "$arg": "MSG" } } },
+
+    { "id": "core.event.broadcast_and_wait", "version": 1, "category": "event", "shape": "stack",
+      "message": "广播 {MSG} 并等待", "args": { "MSG": { "type": "string", "default": "消息1" } },
+      "ir": { "op": "event.broadcast_wait", "message": { "$arg": "MSG" } } },
+
+    { "id": "core.control.wait", "version": 1, "category": "control", "shape": "stack",
+      "message": "等待 {SECS} 秒", "args": { "SECS": { "type": "number", "default": 1 } },
+      "ir": { "op": "control.wait", "seconds": { "$arg": "SECS" } } },
+
+    { "id": "core.control.repeat", "version": 1, "category": "control", "shape": "stack",
+      "message": "重复执行 {TIMES} 次", "args": { "TIMES": { "type": "number", "default": 10 } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "control.repeat", "times": { "$arg": "TIMES" }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.control.forever", "version": 1, "category": "control", "shape": "stack",
+      "message": "重复执行", "args": {},
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "control.forever", "body": { "$branch": "BODY" } } },
+
+    { "id": "core.control.repeat_until", "version": 1, "category": "control", "shape": "stack",
+      "message": "重复执行直到 {COND}", "args": { "COND": { "type": "boolean", "default": false } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "control.while", "cond": { "op": "op.not", "value": { "$arg": "COND" } }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.control.while", "version": 1, "category": "control", "shape": "stack",
+      "message": "当 {COND} 时重复执行", "args": { "COND": { "type": "boolean", "default": false } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "control.while", "cond": { "$arg": "COND" }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.control.if", "version": 1, "category": "control", "shape": "stack",
+      "message": "如果 {COND} 那么", "args": { "COND": { "type": "boolean", "default": false } },
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "control.if", "cond": { "$arg": "COND" }, "body": { "$branch": "BODY" } } },
+
+    { "id": "core.control.if_else", "version": 1, "category": "control", "shape": "stack",
+      "message": "如果 {COND} 那么 {THEN} 否则 {ELSE}",
+      "args": { "COND": { "type": "boolean", "default": false } },
+      "branches": [ { "name": "THEN" }, { "name": "ELSE" } ],
+      "ir": { "op": "control.if_else", "cond": { "$arg": "COND" }, "then": { "$branch": "THEN" }, "else": { "$branch": "ELSE" } } },
+
+    { "id": "core.control.wait_until", "version": 1, "category": "control", "shape": "stack",
+      "message": "等待直到 {COND}", "args": { "COND": { "type": "boolean", "default": false } },
+      "ir": { "op": "control.wait_until", "cond": { "$arg": "COND" } } },
+
+    { "id": "core.control.stop", "version": 1, "category": "control", "shape": "stack",
+      "message": "停止 {MODE}",
+      "args": { "MODE": { "type": "dropdown", "default": "this", "options": [
+        { "value": "all", "label": "全部脚本" }, { "value": "this", "label": "当前脚本" },
+        { "value": "other", "label": "该角色的其他脚本" } ] } },
+      "ir": { "op": "control.stop", "mode": { "$arg": "MODE" } } },
+
+    { "id": "core.control.stop_all", "version": 1, "category": "control", "shape": "stack",
+      "message": "停止全部", "args": {}, "ir": { "op": "control.stop_all" } },
+
+    { "id": "core.control.create_clone", "version": 1, "category": "control", "shape": "stack",
+      "message": "克隆 {TARGET}", "args": { "TARGET": { "type": "node", "default": "@self" } },
+      "ir": { "op": "control.clone_create", "target": { "$arg": "TARGET" } } },
+
+    { "id": "core.control.delete_clone", "version": 1, "category": "control", "shape": "stack",
+      "message": "删除此克隆体", "args": {},
+      "ir": { "op": "control.clone_delete", "target": "@self" } },
+
+    { "id": "core.control.warp", "version": 1, "category": "control", "shape": "stack",
+      "message": "不刷新屏幕执行 {BODY}", "args": {},
+      "branches": [ { "name": "BODY" } ],
+      "ir": { "op": "control.warp", "body": { "$branch": "BODY" } } },
+
+    { "id": "core.motion.move_steps", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "移动 {STEPS} 步", "args": { "STEPS": { "type": "number", "default": 10 } },
+      "ir": { "op": "motion.move_steps", "steps": { "$arg": "STEPS" } } },
+
+    { "id": "core.motion.set_position", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "移到 x: {X} y: {Y}", "args": { "X": { "type": "number", "default": 0 }, "Y": { "type": "number", "default": 0 } },
+      "ir": { "op": "motion.set_position", "x": { "$arg": "X" }, "y": { "$arg": "Y" } } },
+
+    { "id": "core.motion.change_x", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "将 x 坐标增加 {DX}", "args": { "DX": { "type": "number", "default": 10 } },
+      "ir": { "op": "motion.change_x", "dx": { "$arg": "DX" } } },
+
+    { "id": "core.motion.change_y", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "将 y 坐标增加 {DY}", "args": { "DY": { "type": "number", "default": 10 } },
+      "ir": { "op": "motion.change_y", "dy": { "$arg": "DY" } } },
+
+    { "id": "core.motion.point_direction", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "面向 {DIR} 方向", "args": { "DIR": { "type": "number", "default": 90 } },
+      "ir": { "op": "motion.point_direction", "direction": { "$arg": "DIR" } } },
+
+    { "id": "core.motion.turn", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "旋转 {DELTA} 度",
+      "args": { "DELTA": { "type": "number", "default": 15 },
+                "MODE": { "type": "dropdown", "default": "cw", "options": [
+                  { "value": "cw", "label": "顺时针" }, { "value": "ccw", "label": "逆时针" } ] } },
+      "ir": { "op": "motion.turn", "delta": { "$arg": "DELTA" }, "mode": { "$arg": "MODE" } } },
+
+    { "id": "core.motion.bounce", "version": 1, "category": "motion", "shape": "stack", "target": "@self",
+      "message": "碰到边缘就反弹", "args": {}, "ir": { "op": "motion.bounce" } },
+
+    { "id": "core.motion.x", "version": 1, "category": "motion", "shape": "reporter", "target": "@self",
+      "message": "x 坐标", "args": {}, "ir": { "op": "motion.get_x" } },
+
+    { "id": "core.motion.y", "version": 1, "category": "motion", "shape": "reporter", "target": "@self",
+      "message": "y 坐标", "args": {}, "ir": { "op": "motion.get_y" } },
+
+    { "id": "core.motion.direction", "version": 1, "category": "motion", "shape": "reporter", "target": "@self",
+      "message": "方向", "args": {}, "ir": { "op": "motion.get_direction" } },
+
+    { "id": "core.looks.say", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "说 {TEXT}",
+      "args": { "TEXT": { "type": "any", "default": "你好！" },
+                "MODE": { "type": "dropdown", "default": "say", "options": [
+                  { "value": "say", "label": "说" }, { "value": "think", "label": "思考" } ] } },
+      "ir": { "op": "looks.say", "text": { "$arg": "TEXT" }, "mode": { "$arg": "MODE" }, "seconds": 0 } },
+
+    { "id": "core.looks.say_for", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "说 {TEXT} {SECS} 秒",
+      "args": { "TEXT": { "type": "any", "default": "你好！" }, "SECS": { "type": "number", "default": 2 } },
+      "ir": { "op": "looks.say", "text": { "$arg": "TEXT" }, "mode": "say", "seconds": { "$arg": "SECS" } } },
+
+    { "id": "core.looks.set_visible", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "{MODE}", "args": { "MODE": { "type": "dropdown", "default": "show", "options": [
+        { "value": "show", "label": "显示" }, { "value": "hide", "label": "隐藏" } ] } },
+      "ir": { "op": "looks.set_visible", "visible": { "op": "op.eq", "left": { "$arg": "MODE" }, "right": "show" } } },
+
+    { "id": "core.looks.set_costume", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "换成 {NAME} 造型",
+      "args": { "NAME": { "type": "costume", "default": "" },
+                "MODE": { "type": "dropdown", "default": "set", "options": [
+                  { "value": "set", "label": "换成" }, { "value": "next", "label": "下一个造型" } ] } },
+      "ir": { "op": "looks.set_costume", "name": { "$arg": "NAME" }, "mode": { "$arg": "MODE" } } },
+
+    { "id": "core.looks.set_size", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "将大小设为 {PCT} %",
+      "args": { "PCT": { "type": "number", "default": 100 },
+                "MODE": { "type": "dropdown", "default": "set", "options": [
+                  { "value": "set", "label": "设为" }, { "value": "change", "label": "增加" } ] } },
+      "ir": { "op": "looks.set_size", "percent": { "$arg": "PCT" }, "mode": { "$arg": "MODE" } } },
+
+    { "id": "core.looks.set_effect", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "将 {EFFECT} 特效 {MODE} {VALUE}",
+      "args": { "EFFECT": { "type": "dropdown", "default": "color", "options": [
+                  { "value": "color", "label": "颜色" }, { "value": "fisheye", "label": "鱼眼" },
+                  { "value": "whirl", "label": "旋转" }, { "value": "pixelate", "label": "像素化" },
+                  { "value": "mosaic", "label": "马赛克" }, { "value": "brightness", "label": "亮度" },
+                  { "value": "ghost", "label": "虚像" } ] },
+                "MODE": { "type": "dropdown", "default": "set", "options": [
+                  { "value": "set", "label": "设为" }, { "value": "change", "label": "增加" } ] },
+                "VALUE": { "type": "number", "default": 25 } },
+      "ir": { "op": "looks.set_effect", "effect": { "$arg": "EFFECT" }, "mode": { "$arg": "MODE" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.looks.clear_effects", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "清除图形特效", "args": {}, "ir": { "op": "looks.clear_effects" } },
+
+    { "id": "core.looks.set_layer", "version": 1, "category": "looks", "shape": "stack", "target": "@self",
+      "message": "移到 {MODE}",
+      "args": { "MODE": { "type": "dropdown", "default": "front", "options": [
+        { "value": "front", "label": "最前面" }, { "value": "back", "label": "最后面" },
+        { "value": "forward", "label": "前面一层" }, { "value": "backward", "label": "后面一层" } ] } },
+      "ir": { "op": "looks.set_layer", "mode": { "$arg": "MODE" } } },
+
+    { "id": "core.sound.play", "version": 1, "category": "sound", "shape": "stack", "target": "@self",
+      "message": "{MODE} 声音 {NAME}",
+      "args": { "NAME": { "type": "sound", "default": "" },
+                "MODE": { "type": "dropdown", "default": "start", "options": [
+                  { "value": "start", "label": "播放" }, { "value": "wait", "label": "播放等待完成" } ] } },
+      "ir": { "op": "sound.play", "name": { "$arg": "NAME" }, "wait": { "op": "op.eq", "left": { "$arg": "MODE" }, "right": "wait" } } },
+
+    { "id": "core.sound.stop_all", "version": 1, "category": "sound", "shape": "stack",
+      "message": "停止所有声音", "args": {}, "ir": { "op": "sound.stop_all" } },
+
+    { "id": "core.sensing.touching", "version": 1, "category": "sensing", "shape": "boolean", "target": "@self",
+      "message": "碰到 {OTHER} ?", "args": { "OTHER": { "type": "node", "default": "@mouse" } },
+      "ir": { "op": "sensing.touching", "other": { "$arg": "OTHER" } } },
+
+    { "id": "core.sensing.key_pressed", "version": 1, "category": "sensing", "shape": "boolean",
+      "message": "按下 {KEY} 键 ?",
+      "args": { "KEY": { "type": "dropdown", "default": "space", "options": [
+        { "value": "space", "label": "空格" }, { "value": "up", "label": "上" }, { "value": "down", "label": "下" },
+        { "value": "left", "label": "左" }, { "value": "right", "label": "右" },
+        { "value": "any", "label": "任意" } ] } },
+      "ir": { "op": "sensing.key_pressed", "key": { "$arg": "KEY" } } },
+
+    { "id": "core.sensing.mouse_x", "version": 1, "category": "sensing", "shape": "reporter",
+      "message": "鼠标 x 坐标", "args": {}, "ir": { "op": "sensing.mouse_x" } },
+
+    { "id": "core.sensing.mouse_y", "version": 1, "category": "sensing", "shape": "reporter",
+      "message": "鼠标 y 坐标", "args": {}, "ir": { "op": "sensing.mouse_y" } },
+
+    { "id": "core.sensing.mouse_down", "version": 1, "category": "sensing", "shape": "boolean",
+      "message": "按下鼠标 ?", "args": {}, "ir": { "op": "sensing.mouse_down" } },
+
+    { "id": "core.sensing.timer", "version": 1, "category": "sensing", "shape": "reporter",
+      "message": "计时器", "args": {}, "ir": { "op": "sensing.timer" } },
+
+    { "id": "core.sensing.reset_timer", "version": 1, "category": "sensing", "shape": "stack",
+      "message": "计时器归零", "args": {}, "ir": { "op": "sensing.reset_timer" } },
+
+    { "id": "core.sensing.ask", "version": 1, "category": "sensing", "shape": "stack",
+      "message": "询问 {Q} 并等待", "args": { "Q": { "type": "any", "default": "你叫什么名字？" } },
+      "ir": { "op": "sensing.ask", "question": { "$arg": "Q" } } },
+
+    { "id": "core.sensing.answer", "version": 1, "category": "sensing", "shape": "reporter",
+      "message": "回答", "args": {}, "ir": { "op": "sensing.answer" } },
+
+    { "id": "core.operator.add", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} + {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.add", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.sub", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} − {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.sub", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.mul", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} × {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.mul", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.div", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} ÷ {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 1 } },
+      "ir": { "op": "op.div", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.mod", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} 除以 {B} 的余数",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 1 } },
+      "ir": { "op": "op.mod", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.round", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} 四舍五入", "args": { "A": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.round", "value": { "$arg": "A" } } },
+
+    { "id": "core.operator.abs", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{A} 的绝对值", "args": { "A": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.abs", "value": { "$arg": "A" } } },
+
+    { "id": "core.operator.random", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "在 {FROM} 和 {TO} 之间取随机数",
+      "args": { "FROM": { "type": "any", "default": 1 }, "TO": { "type": "any", "default": 10 } },
+      "ir": { "op": "op.random", "from": { "$arg": "FROM" }, "to": { "$arg": "TO" } } },
+
+    { "id": "core.operator.gt", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "{A} > {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.gt", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.lt", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "{A} < {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.lt", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.eq", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "{A} = {B}",
+      "args": { "A": { "type": "any", "default": 0 }, "B": { "type": "any", "default": 0 } },
+      "ir": { "op": "op.eq", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.and", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "{A} 且 {B}",
+      "args": { "A": { "type": "boolean", "default": false }, "B": { "type": "boolean", "default": false } },
+      "ir": { "op": "op.and", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.or", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "{A} 或 {B}",
+      "args": { "A": { "type": "boolean", "default": false }, "B": { "type": "boolean", "default": false } },
+      "ir": { "op": "op.or", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.not", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "不成立 {A}", "args": { "A": { "type": "boolean", "default": false } },
+      "ir": { "op": "op.not", "value": { "$arg": "A" } } },
+
+    { "id": "core.operator.join", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "连接 {A} 和 {B}",
+      "args": { "A": { "type": "any", "default": "苹果" }, "B": { "type": "any", "default": "香蕉" } },
+      "ir": { "op": "op.join", "left": { "$arg": "A" }, "right": { "$arg": "B" } } },
+
+    { "id": "core.operator.letter_of", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{S} 的第 {I} 个字符",
+      "args": { "I": { "type": "any", "default": 1 }, "S": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "op.letter_of", "index": { "$arg": "I" }, "string": { "$arg": "S" } } },
+
+    { "id": "core.operator.length", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "{S} 的字符数", "args": { "S": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "op.length", "string": { "$arg": "S" } } },
+
+    { "id": "core.operator.contains", "version": 1, "category": "operator", "shape": "boolean",
+      "message": "{S} 包含 {SUB} ?",
+      "args": { "S": { "type": "any", "default": "苹果" }, "SUB": { "type": "any", "default": "果" } },
+      "ir": { "op": "op.contains", "string": { "$arg": "S" }, "needle": { "$arg": "SUB" } } },
+
+    { "id": "core.operator.expression", "version": 1, "category": "operator", "shape": "reporter",
+      "message": "表达式 {SRC}",
+      "args": { "SRC": { "type": "expression", "default": "1 + 1" } },
+      "ir": { "op": "op.expression", "source": { "$arg": "SRC" } } },
+
+    { "id": "core.data.var", "version": 1, "category": "data", "shape": "reporter",
+      "message": "{NAME}", "args": { "NAME": { "type": "variable", "default": "分数" } },
+      "ir": { "op": "var.get", "name": { "$arg": "NAME" } } },
+
+    { "id": "core.data.set_var", "version": 1, "category": "data", "shape": "stack",
+      "message": "将 {NAME} 设为 {VALUE}",
+      "args": { "NAME": { "type": "variable", "default": "分数" }, "VALUE": { "type": "any", "default": 0 } },
+      "ir": { "op": "var.set", "name": { "$arg": "NAME" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.data.change_var", "version": 1, "category": "data", "shape": "stack",
+      "message": "将 {NAME} 增加 {DELTA}",
+      "args": { "NAME": { "type": "variable", "default": "分数" }, "DELTA": { "type": "any", "default": 1 } },
+      "ir": { "op": "var.change", "name": { "$arg": "NAME" }, "delta": { "$arg": "DELTA" } } },
+
+    { "id": "core.data.show_var", "version": 1, "category": "data", "shape": "stack",
+      "message": "{MODE}变量 {NAME}",
+      "args": { "NAME": { "type": "variable", "default": "分数" },
+                "MODE": { "type": "dropdown", "default": "show", "options": [
+                  { "value": "show", "label": "显示" }, { "value": "hide", "label": "隐藏" } ] } },
+      "ir": { "op": "var.show", "name": { "$arg": "NAME" }, "show": { "op": "op.eq", "left": { "$arg": "MODE" }, "right": "show" } } },
+
+    { "id": "core.data.list_add", "version": 1, "category": "data", "shape": "stack",
+      "message": "将 {VALUE} 加入 {NAME}",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "VALUE": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "list.add", "name": { "$arg": "NAME" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.data.list_delete", "version": 1, "category": "data", "shape": "stack",
+      "message": "删除 {NAME} 的第 {INDEX} 项",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "INDEX": { "type": "any", "default": 1 } },
+      "ir": { "op": "list.delete", "name": { "$arg": "NAME" }, "index": { "$arg": "INDEX" } } },
+
+    { "id": "core.data.list_clear", "version": 1, "category": "data", "shape": "stack",
+      "message": "删除 {NAME} 的全部项目",
+      "args": { "NAME": { "type": "list", "default": "物品" } },
+      "ir": { "op": "list.clear", "name": { "$arg": "NAME" } } },
+
+    { "id": "core.data.list_insert", "version": 1, "category": "data", "shape": "stack",
+      "message": "在 {NAME} 的第 {INDEX} 项前插入 {VALUE}",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "INDEX": { "type": "any", "default": 1 },
+                "VALUE": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "list.insert", "name": { "$arg": "NAME" }, "index": { "$arg": "INDEX" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.data.list_replace", "version": 1, "category": "data", "shape": "stack",
+      "message": "将 {NAME} 的第 {INDEX} 项替换为 {VALUE}",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "INDEX": { "type": "any", "default": 1 },
+                "VALUE": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "list.replace", "name": { "$arg": "NAME" }, "index": { "$arg": "INDEX" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.data.list_item", "version": 1, "category": "data", "shape": "reporter",
+      "message": "{NAME} 的第 {INDEX} 项",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "INDEX": { "type": "any", "default": 1 } },
+      "ir": { "op": "list.get", "name": { "$arg": "NAME" }, "index": { "$arg": "INDEX" } } },
+
+    { "id": "core.data.list_length", "version": 1, "category": "data", "shape": "reporter",
+      "message": "{NAME} 的项目数", "args": { "NAME": { "type": "list", "default": "物品" } },
+      "ir": { "op": "list.length", "name": { "$arg": "NAME" } } },
+
+    { "id": "core.data.list_index_of", "version": 1, "category": "data", "shape": "reporter",
+      "message": "{NAME} 中 {VALUE} 的编号",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "VALUE": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "list.index_of", "name": { "$arg": "NAME" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.data.list_contains", "version": 1, "category": "data", "shape": "boolean",
+      "message": "{NAME} 包含 {VALUE} ?",
+      "args": { "NAME": { "type": "list", "default": "物品" }, "VALUE": { "type": "any", "default": "苹果" } },
+      "ir": { "op": "list.contains", "name": { "$arg": "NAME" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.data.list_show", "version": 1, "category": "data", "shape": "stack",
+      "message": "{MODE}列表 {NAME}",
+      "args": { "NAME": { "type": "list", "default": "物品" },
+                "MODE": { "type": "dropdown", "default": "show", "options": [
+                  { "value": "show", "label": "显示" }, { "value": "hide", "label": "隐藏" } ] } },
+      "ir": { "op": "list.show", "name": { "$arg": "NAME" }, "show": { "op": "op.eq", "left": { "$arg": "MODE" }, "right": "show" } } },
+
+    { "id": "core.meta.set_property", "version": 1, "category": "meta", "shape": "stack",
+      "message": "将 {TARGET} 的 {PROP} 设为 {VALUE}",
+      "args": { "TARGET": { "type": "node", "default": "@self" }, "PROP": { "type": "property", "default": "position" },
+                "VALUE": { "type": "any", "default": 0 } },
+      "ir": { "op": "meta.set_property", "target": { "$arg": "TARGET" }, "property": { "$arg": "PROP" }, "value": { "$arg": "VALUE" } } },
+
+    { "id": "core.meta.get_property", "version": 1, "category": "meta", "shape": "reporter",
+      "message": "{TARGET} 的 {PROP}",
+      "args": { "TARGET": { "type": "node", "default": "@self" }, "PROP": { "type": "property", "default": "position" } },
+      "ir": { "op": "meta.get_property", "target": { "$arg": "TARGET" }, "property": { "$arg": "PROP" } } },
+
+    { "id": "core.meta.call_method", "version": 1, "category": "meta", "shape": "stack",
+      "message": "调用 {TARGET} 的 {METHOD} 参数 {ARGS}",
+      "args": { "TARGET": { "type": "node", "default": "@self" }, "METHOD": { "type": "method", "default": "queue_free" },
+                "ARGS": { "type": "variant_list", "default": [] } },
+      "ir": { "op": "meta.call_method", "target": { "$arg": "TARGET" }, "method": { "$arg": "METHOD" }, "args": { "$arg": "ARGS" } } },
+
+    { "id": "core.meta.emit_signal", "version": 1, "category": "meta", "shape": "stack",
+      "message": "发送信号 {SIG} 给 {TARGET}，参数 {ARGS}",
+      "args": { "TARGET": { "type": "node", "default": "@self" }, "SIG": { "type": "signal", "default": "pressed" },
+                "ARGS": { "type": "variant_list", "default": [] } },
+      "ir": { "op": "meta.emit_signal", "target": { "$arg": "TARGET" }, "signal": { "$arg": "SIG" }, "args": { "$arg": "ARGS" } } },
+
+    { "id": "core.meta.instantiate", "version": 1, "category": "meta", "shape": "stack",
+      "message": "从 {SOURCE} 实例化到 {PARENT}",
+      "args": { "SOURCE": { "type": "string", "default": "res://scenes/Enemy.tscn" },
+                "PARENT": { "type": "node", "default": "@stage" } },
+      "ir": { "op": "meta.instantiate", "parent": { "$arg": "PARENT" }, "source": { "$arg": "SOURCE" } } },
+
+    { "id": "core.code.gdscript", "version": 1, "category": "code", "shape": "stack", "target": "@self",
+      "message": "执行代码 {SRC}",
+      "args": { "SRC": { "type": "code", "default": "# 可访问 self / node / 舞台变量\n" } },
+      "ir": { "op": "code.gdscript", "source": { "$arg": "SRC" } } }
+  ]
+}

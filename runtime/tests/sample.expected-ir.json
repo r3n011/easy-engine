@@ -1,0 +1,233 @@
+{
+  "compilerVersion": 1,
+  "extensions": [
+    {
+      "id": "ee.physics2d",
+      "version": ">=1"
+    }
+  ],
+  "globals": {
+    "lists": [
+      {
+        "id": "g_bag",
+        "name": "物品",
+        "value": []
+      }
+    ],
+    "variables": [
+      {
+        "id": "g_score",
+        "name": "分数",
+        "value": 0.0
+      }
+    ]
+  },
+  "godotApiVersion": "4.7.2",
+  "irVersion": 1,
+  "name": "示例：会跳的小猫",
+  "nodes": [
+    {
+      "costumes": [
+        {
+          "asset": "assets/cat.png",
+          "id": "c1",
+          "name": "默认"
+        }
+      ],
+      "id": "Player",
+      "localVariables": [
+        {
+          "id": "l_hp",
+          "name": "生命",
+          "value": 3.0
+        }
+      ],
+      "name": "小猫",
+      "order": 0,
+      "parent": "@stage",
+      "scripts": [
+        {
+          "body": [
+            {
+              "name": "分数",
+              "op": "var.set",
+              "scope": "auto",
+              "value": 0.0
+            },
+            {
+              "body": [
+                {
+                  "op": "motion.move_steps",
+                  "steps": 10.0,
+                  "target": "@self"
+                },
+                {
+                  "body": [
+                    {
+                      "delta": {
+                        "op": "op.expression",
+                        "source": "1 + 1"
+                      },
+                      "name": "分数",
+                      "op": "var.change",
+                      "scope": "auto"
+                    },
+                    {
+                      "impulse": {
+                        "op": "vec2",
+                        "x": 0.0,
+                        "y": -200.0
+                      },
+                      "op": "phy2d.apply_impulse",
+                      "target": "@self"
+                    }
+                  ],
+                  "cond": {
+                    "op": "sensing.touching",
+                    "other": "@mouse",
+                    "target": "@self"
+                  },
+                  "op": "control.if"
+                }
+              ],
+              "op": "control.repeat",
+              "times": 10.0
+            },
+            {
+              "op": "meta.set_property",
+              "property": "modulate",
+              "target": "@self",
+              "value": "red"
+            },
+            {
+              "op": "code.gdscript",
+              "source": "print(\"结束，得分 = \", 分数)",
+              "target": "@self"
+            }
+          ],
+          "kind": "flag",
+          "op": "event.hat",
+          "params": null
+        },
+        {
+          "body": [
+            {
+              "cond": {
+                "op": "phy2d.is_on_floor",
+                "target": "@self"
+              },
+              "else": [
+                {
+                  "op": "looks.set_visible",
+                  "target": "@self",
+                  "visible": {
+                    "left": "show",
+                    "op": "op.eq",
+                    "right": "show"
+                  }
+                }
+              ],
+              "op": "control.if_else",
+              "then": [
+                {
+                  "op": "phy2d.set_velocity",
+                  "target": "@self",
+                  "velocity": {
+                    "op": "vec2",
+                    "x": 0.0,
+                    "y": -420.0
+                  }
+                }
+              ]
+            }
+          ],
+          "kind": "key",
+          "op": "event.hat",
+          "params": {
+            "key": "space"
+          }
+        }
+      ],
+      "sounds": [
+        {
+          "asset": "assets/jump.ogg",
+          "id": "s1",
+          "name": "跳跃"
+        }
+      ],
+      "template": "CHARACTER_BODY_2D",
+      "transform": {
+        "position": [
+          0.0,
+          0.0
+        ],
+        "rotation": 0.0,
+        "scale": [
+          100.0,
+          100.0
+        ]
+      },
+      "visible": true
+    },
+    {
+      "costumes": [
+        {
+          "asset": "assets/coin.png",
+          "id": "c2",
+          "name": "金币"
+        }
+      ],
+      "id": "Coin",
+      "localVariables": [],
+      "name": "金币",
+      "order": 1,
+      "parent": "@stage",
+      "scripts": [
+        {
+          "body": [
+            {
+              "delta": 1.0,
+              "name": "分数",
+              "op": "var.change",
+              "scope": "auto"
+            },
+            {
+              "op": "control.clone_delete",
+              "target": "@self"
+            }
+          ],
+          "kind": "touching",
+          "op": "event.hat",
+          "params": {
+            "other": "Player"
+          }
+        }
+      ],
+      "sounds": [],
+      "template": "AREA_2D",
+      "transform": {
+        "position": [
+          120.0,
+          -60.0
+        ],
+        "rotation": 0.0,
+        "scale": [
+          100.0,
+          100.0
+        ]
+      },
+      "visible": true
+    }
+  ],
+  "sourceFormatVersion": 1,
+  "stage": {
+    "background": "assets/bg.png",
+    "settings": {
+      "gravity": 980.0
+    },
+    "size": [
+      480,
+      360
+    ]
+  }
+}

@@ -77,6 +77,41 @@ python tools\zh-todo.py engine\godot       # 筛出真·界面漏翻
 python tools\zh-apply.py                   # 回填（自动跳过已存在）
 ```
 
+## M1 进展：格式与 IR 已定稿
+
+`.ee` 项目格式、IR 规范、积木↔场景同步规则**已定稿**，编译管线**已跑通**：
+
+```powershell
+powershell -File tools/test-runtime.ps1     # 一条命令跑完 M1 全部验收
+```
+
+```
+1. 定义注册表   扩展 2 个，积木 95 个，op 95 个；错误 0
+2. 示例项目校验  节点 2 个，脚本 3 个；（无问题）
+3. IR 回归      与基准一致（5090 字节）
+M1 全部验收通过。
+```
+
+### 扩展性是怎么落到格式里的（这是本次的重点）
+
+| 约束 | 做法 | 不这么做会怎样 |
+|---|---|---|
+| **IR 以后要改，老项目不能坏** | `.ee` 里**只存积木 id，不存 opcode**；opcode 由积木定义映射 | 每次改 IR 都要写一批转换脚本，越写越乱 |
+| **加积木不能改引擎代码** | 积木与 op 全**数据驱动**（`defs/*.json`），文件名前缀决定扩展归属 | 社区无法扩展，我们自己也慢 |
+| **旧版工具不能抹掉新字段** | 加载器**从不重建字典**，只在原始字典上读写 | 用户用旧版打开新项目、一保存，新功能全没了 |
+| **Godot 升级不能静默搞坏项目** | 记录 `godotApiVersion` + API 改名映射表 | 每次 Godot 大版本升级都坏一批项目 |
+| **格式升级不能写 N² 个转换器** | `formatVersion` 整数 + `migrations/migrate_<a>_to_<b>.gd` 逐级迁移 | 转换脚本数量爆炸 |
+
+规格文档：
+- [`docs/format/EE-FORMAT.md`](docs/format/EE-FORMAT.md) —— 项目格式（含扩展与前向兼容）
+- [`docs/format/EE-IR.md`](docs/format/EE-IR.md) —— IR 规范（含让步语义契约、两条逃生舱）
+- [`docs/format/SYNC.md`](docs/format/SYNC.md) —— 积木 ↔ 场景双向同步规则
+
+工作清单与验收结果：[`docs/M1-TODO.md`](docs/M1-TODO.md)
+
+> 顺带一提：注册表的交叉校验在第一次运行时就抓出一个真错误——`core.control.warp`
+> 引用了不存在的 op。**在编译期暴露是一行提示，在运行期暴露就是一个线上崩溃。**
+
 ## 三个最关键的认知
 
 1. **Gandi 的 GUI 编辑器不开源**，开源的是 VM / 积木渲染 / 扩展生态。自建编辑器是必然选择。
@@ -85,11 +120,12 @@ python tools\zh-apply.py                   # 回填（自动跳过已存在）
 
 ## 进度
 
-- [x] **M0** 环境、源码、Godot 构建链路（SCons + MSVC 14.44 已打通）
-- [ ] M1 数据模型与 `.ee` 项目格式、IR 设计
-- [ ] M2 调度器（线程 / 让步 / warp / 广播 / 克隆体）+ 节点桥
-- [ ] M3 核心积木接到 Godot → 第一个可玩 Demo
-- [ ] M4 fork scratch-gui 自研编辑器
-- [ ] M5 Windows 一键导出
+- [x] **M0** 环境、源码、Godot 构建链路（SCons + MSVC 14.44 已打通）、**界面 100% 汉化**
+- [x] **M1** `.ee` 格式 / IR / 同步规则定稿，编译管线跑通，扩展机制实测可用
+- [ ] M2 调度器（线程 / 让步 / warp / 广播 / 克隆体）+ 表达式求值器 + 节点桥
+- [ ] M3 核心积木接到 Godot + 三条逃生舱 → 第一个可玩 Demo
+- [ ] M4 fork scratch-gui 自研编辑器（L1 积木模式 / L2 场景模式）
+- [ ] M4.5 L3 引擎模式（Godot 编辑器插件 + 清理遗留痕迹）
+- [ ] M5 Windows 一键发布
 - [ ] M6 Godot 能力积木库（物理 / 粒子 / 着色器 / 瓦片 / 动画 / 场景 / 存档 / 相机 / 联机）
 - [ ] M7 `.sb3` 导入器、素材库、云存档、Android / Web

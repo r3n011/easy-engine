@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "description": "节点模板表：Scratcher 看到的是『角色』，底层是可替换的 Godot 节点子树。扩展可以注册新模板。",
+  "roles": {
+    "costume": "承载造型（Shape 切换目标）",
+    "shape": "碰撞形状",
+    "audio": "音效播放器",
+    "anim": "造型动画播放器"
+  },
+  "templates": [
+    {
+      "id": "SPRITE_2D",
+      "name": "普通角色",
+      "description": "只有贴图，不参与物理。适合背景、装饰、UI 图标。",
+      "root": "Node2D",
+      "children": [
+        { "name": "Costume", "type": "Sprite2D", "role": "costume" }
+      ]
+    },
+    {
+      "id": "CHARACTER_BODY_2D",
+      "name": "平台跳跃角色",
+      "description": "带碰撞体的角色，速度由自己控制，适合跳跃、跑酷。",
+      "root": "CharacterBody2D",
+      "children": [
+        { "name": "Shape", "type": "CollisionShape2D", "role": "shape" },
+        { "name": "Costume", "type": "Sprite2D", "role": "costume" }
+      ],
+      "defaults": { "motion_mode": "grounded", "floor_stop_on_slope": true }
+    },
+    {
+      "id": "RIGID_BODY_2D",
+      "name": "真实物理角色",
+      "description": "完全交给 Godot 物理模拟，适合被撞飞、滚落、堆叠。",
+      "root": "RigidBody2D",
+      "children": [
+        { "name": "Shape", "type": "CollisionShape2D", "role": "shape" },
+        { "name": "Costume", "type": "Sprite2D", "role": "costume" }
+      ]
+    },
+    {
+      "id": "AREA_2D",
+      "name": "触发区域",
+      "description": "不参与碰撞、只负责『碰到就发生什么』。适合金币、检查点、伤害区。",
+      "root": "Area2D",
+      "children": [
+        { "name": "Shape", "type": "CollisionShape2D", "role": "shape" },
+        { "name": "Costume", "type": "Sprite2D", "role": "costume" }
+      ]
+    },
+    {
+      "id": "CONTROL",
+      "name": "界面控件",
+      "description": "UI 元素（按钮、文字、图片）。适合做菜单、血条、对话框。",
+      "root": "Control",
+      "children": [
+        { "name": "Costume", "type": "TextureRect", "role": "costume" }
+      ]
+    },
+    {
+      "id": "ANIMATED_SPRITE_2D",
+      "name": "逐帧动画角色",
+      "description": "由多张造型自动播放动画，适合走路、跑步、爆炸。",
+      "root": "Node2D",
+      "children": [
+        { "name": "Anim", "type": "AnimatedSprite2D", "role": "anim" },
+        { "name": "Costume", "type": "Sprite2D", "role": "costume" }
+      ]
+    },
+    {
+      "id": "TILEMAP",
+      "name": "瓦片关卡",
+      "description": "带瓦片地图的关卡根节点，适合做横版关卡地形。",
+      "root": "Node2D",
+      "children": [
+        { "name": "Terrain", "type": "TileMapLayer" }
+      ]
+    },
+    {
+      "id": "CAMERA_2D",
+      "name": "相机",
+      "description": "镜头，可跟随角色、限制在关卡范围内。",
+      "root": "Camera2D",
+      "children": []
+    }
+  ]
+}
