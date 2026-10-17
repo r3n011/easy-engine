@@ -107,7 +107,7 @@
           ],
           "kind": "flag",
           "op": "event.hat",
-          "params": null
+          "params": {}
         },
         {
           "body": [

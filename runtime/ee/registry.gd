@@ -128,6 +128,8 @@ func _load_op_file(path: String, enabled: Array) -> void:
 		return
 	_register_extension(data, path)
 	var ext_id: String = data.get("extension", "")
+	# 文件头的 provider 要下发到每一条 op，运行时据此找到实现
+	var provider: String = str(data.get("provider", ""))
 
 	for o in data.get("ops", []):
 		var oid: String = o.get("id", "")
@@ -139,9 +141,12 @@ func _load_op_file(path: String, enabled: Array) -> void:
 			continue
 		var def: Dictionary = o.duplicate(true)
 		def["extension"] = ext_id
+		def["provider"] = provider
 		def["enabled"] = enabled.is_empty() or enabled.has(ext_id)
 		ops[oid] = def
 		extensions[ext_id]["ops"].append(oid)
+	if not provider.is_empty():
+		extensions[ext_id]["provider"] = provider
 
 
 # 交叉校验：积木的 ir 模板里引用到的每个 op，都必须存在于 op 表。

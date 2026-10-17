@@ -28,13 +28,27 @@ function Run-Phase($title, $cliArgs) {
     }
 }
 
-Run-Phase "1. 定义注册表" @("defs")
-Run-Phase "2. 示例项目校验" @("check", "tests/sample.ee.json")
-Run-Phase "3. IR 回归"    @("regress")
+Run-Phase "1. 定义注册表"     @("defs")
+Run-Phase "2. 示例项目校验"   @("check", "tests/sample.ee.json")
+Run-Phase "3. IR 回归"        @("regress")
+Run-Phase "4. 端到端运行示例" @("run", "tests/sample.ee.json", "--frames", "60")
+
+Write-Host ""
+Write-Host "==== 5. 调度器测试（M2）====" -ForegroundColor Cyan
+& $Godot --headless --path $runtime --script "tests/m2_tests.gd" 2>&1 |
+    Where-Object { $_ -notmatch "^\s*Godot Engine v" } |
+    Where-Object { $_ -match "^\s*(OK|FAIL|通过|==)" } |
+    ForEach-Object { Write-Host $_ }
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  -> 失败（退出码 $LASTEXITCODE）" -ForegroundColor Red
+    $script:failed++
+} else {
+    Write-Host "  -> 通过" -ForegroundColor Green
+}
 
 Write-Host ""
 if ($failed -eq 0) {
-    Write-Host "M1 全部验收通过。" -ForegroundColor Green
+    Write-Host "M1 + M2 全部验收通过。" -ForegroundColor Green
     exit 0
 } else {
     Write-Host "$failed 项失败。" -ForegroundColor Red

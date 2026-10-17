@@ -11,6 +11,9 @@ const Registry = preload("res://ee/registry.gd")
 const Project = preload("res://ee/project.gd")
 const Compiler = preload("res://ee/compiler.gd")
 const Version = preload("res://ee/version.gd")
+const Runtime = preload("res://ee/runtime.gd")
+const NodeBridge = preload("res://ee/bridge/node_bridge.gd")
+const Values = preload("res://ee/values.gd")
 
 const DEFS_DIR := "res://ee/defs"
 const SAMPLE := "res://tests/sample.ee.json"
@@ -22,6 +25,7 @@ func _init() -> void:
 	var files: Array = []
 	var exts: Array = []
 	var out_path := ""
+	var frames := 120
 
 	var i := 1
 	while i < args.size():
@@ -34,6 +38,10 @@ func _init() -> void:
 				i += 1
 				if i < args.size():
 					out_path = args[i]
+			"--frames":
+				i += 1
+				if i < args.size():
+					frames = args[i].to_int()
 			_:
 				files.append(args[i])
 		i += 1
@@ -46,6 +54,8 @@ func _init() -> void:
 			code = _cmd_check(files, exts)
 		"compile":
 			code = _cmd_compile(files, exts, out_path)
+		"run":
+			code = _cmd_run(files, exts, frames, out_path)
 		"regress":
 			code = _cmd_regress(exts)
 		_:
@@ -60,11 +70,13 @@ Easy Engine M1 验收工具
   defs                 列出注册表（扩展 / 积木 / op）并报告定义问题
   check  <file.ee>     只校验，不产出 IR
   compile <file.ee>    编译并输出 IR      [--ext <扩展id>] [--out <路径>]
+  run    <file.ee>     编译后真正跑起来    [--frames N] [--ext <扩展id>]
   regress              编译示例项目并与基准逐字比对
 
 选项:
   --ext <id>   启用某个扩展（可多次）。不指定 = 全部启用。
-  --out <路径> 把 IR 写入文件（默认打印到标准输出）
+  --out <路径> 把 IR 写入文件（compile 用）
+  --frames <N> 运行多少帧（run 用，默认 120）
 """)
 
 
@@ -184,6 +196,88 @@ func _cmd_compile(files: Array, exts: Array, out_path: String) -> int:
 		fa.store_string(text + "\n")
 		fa.close()
 		print("已写入 " + out_path)
+	return 0
+
+
+# 编译并真正跑起来。这是 M2 的端到端验证：.ee → IR → 调度器执行。
+func _cmd_run(files: Array, exts: Array, frames: int, out_path: String) -> int:
+	if files.is_empty():
+		print("用法: run <file.ee> [--frames N] [--ext <id>]")
+		return 2
+	var reg = _make_registry(exts)
+	var prj = _load_project(files[0])
+	if prj == null:
+		return 1
+
+	var c = Compiler.new()
+	c.registry = reg
+	var ir := c.compile(prj)
+	if c.errors().size() > 0:
+		print("== 编译失败 ==")
+		_print_problems(c.problems, "compile")
+		return 1
+	if not out_path.is_empty():
+		var fo := FileAccess.open(out_path, FileAccess.WRITE)
+		if fo != null:
+			fo.store_string(JSON.stringify(ir, "  ", true) + "\n")
+			fo.close()
+			print("IR 已写入 " + out_path)
+
+	var bridge = NodeBridge.new()
+	var rt = Runtime.new()
+	rt.setup(reg, bridge)
+	if rt.errors.size() > 0:
+		print("== 运行时启动失败 ==")
+		for e in rt.errors:
+			print("  " + str(e))
+		return 1
+
+	rt.load_ir(ir)
+	print("== 运行 %d 帧 ==" % frames)
+	print("  启动前：" + rt.describe_state())
+
+	var started = rt.green_flag()
+	print("  绿旗触发了 %d 个脚本" % started.size())
+	if started.is_empty():
+		print("  （没有「当绿旗被点击」的脚本，什么都不会发生）")
+
+	rt.run_frames(frames, 1.0 / 60.0)
+
+	print("  运行后：" + rt.describe_state())
+	print("")
+	print("== 全局变量 ==")
+	var names: Array = rt.globals.keys()
+	names.sort()
+	for n in names:
+		print("  %-16s = %s" % [n, Values.to_string_value(rt.globals[n])])
+	if not rt.global_lists.is_empty():
+		print("== 全局列表 ==")
+		for n in rt.global_lists:
+			print("  %-16s = %s" % [n, JSON.stringify(rt.global_lists[n])])
+	print("")
+	print("== 目标状态 ==")
+	for t in rt.targets:
+		var pos: Vector2 = bridge.get_position(t)
+		print("  %-14s 位置 (%.1f, %.1f)  方向 %.1f  造型 %s%s" % [
+			t.describe(), pos.x, pos.y, float(t.state.get("direction", 90.0)),
+			str(t.state.get("costume", "")), "  隐藏" if not bool(t.state.get("visible", true)) else ""])
+
+	if rt.warnings.size() > 0 or bridge.warnings.size() > 0:
+		print("")
+		print("== 告警 ==")
+		for w in rt.warnings:
+			print("  " + str(w))
+		for w in bridge.warnings:
+			print("  " + str(w))
+	if rt.errors.size() > 0:
+		print("")
+		print("== 运行时错误 ==")
+		for e in rt.errors:
+			print("  " + str(e))
+		rt.dispose()
+		return 1
+
+	rt.dispose()
 	return 0
 
 

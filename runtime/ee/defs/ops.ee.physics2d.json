@@ -1,6 +1,7 @@
 {
   "extension": "ee.physics2d",
   "extensionVersion": 1,
+  "provider": "res://ee/providers/physics2d_ops.gd",
   "requires": [{"id": "ee.core", "version": ">=1"}],
   "description": "物理 2D 扩展的 op 定义。运行时只认 op，不认积木——所以扩展可以自由设计积木的外观。",
   "ops": [
