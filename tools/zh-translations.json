@@ -126,5 +126,36 @@
   { "kind": "extractable", "context": "", "msgid": "no connections", "msgstr": "无连接" },
   { "kind": "extractable", "context": "", "msgid": "output port, type: %d", "msgstr": "输出端口，类型：%d" },
   { "kind": "extractable", "context": "", "msgid": "output port, type: %s", "msgstr": "输出端口，类型：%s" },
-  { "kind": "extractable", "context": "", "msgid": "slot %d of %d", "msgstr": "第 %d 个插槽，共 %d 个" }
+  { "kind": "extractable", "context": "", "msgid": "slot %d of %d", "msgstr": "第 %d 个插槽，共 %d 个" },
+
+  { "kind": "text", "context": "", "msgid": "Auto (%s)", "msgstr": "自动（%s）" },
+
+  { "kind": "text", "context": "Editor Theme Style", "msgid": "Modern", "msgstr": "现代" },
+  { "kind": "text", "context": "Editor Theme Style", "msgid": "Classic", "msgstr": "经典" },
+
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Default", "msgstr": "默认" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Breeze Dark", "msgstr": "Breeze 暗色" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Godot 2", "msgstr": "Godot 2" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Godot 3", "msgstr": "Godot 3" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Gray", "msgstr": "灰色" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Light", "msgstr": "亮色" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Solarized (Dark)", "msgstr": "Solarized（暗色）" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Solarized (Light)", "msgstr": "Solarized（亮色）" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Black (OLED)", "msgstr": "黑色（OLED）" },
+  { "kind": "text", "context": "Editor Color Preset", "msgid": "Custom", "msgstr": "自定义" },
+
+  { "kind": "text", "context": "Display Scale", "msgid": "Custom", "msgstr": "自定义" },
+
+  { "kind": "text", "context": "Network Mode", "msgid": "Offline", "msgstr": "离线" },
+  { "kind": "text", "context": "Network Mode", "msgid": "Online", "msgstr": "在线" },
+
+  { "kind": "text", "context": "Check for Updates", "msgid": "Disable Update Checks", "msgstr": "禁用更新检查" },
+  { "kind": "text", "context": "Check for Updates", "msgid": "Auto (Stable)", "msgstr": "自动（稳定版）" },
+  { "kind": "text", "context": "Check for Updates", "msgid": "Auto (Preview)", "msgstr": "自动（预览版）" },
+  { "kind": "text", "context": "Check for Updates", "msgid": "Check Newest Preview", "msgstr": "检查最新预览版" },
+  { "kind": "text", "context": "Check for Updates", "msgid": "Check Newest Stable", "msgstr": "检查最新稳定版" },
+  { "kind": "text", "context": "Check for Updates", "msgid": "Check Newest Patch", "msgstr": "检查最新补丁" },
+
+  { "kind": "text", "context": "Directory Naming Convention", "msgid": "No Convention", "msgstr": "无规范" },
+  { "kind": "text", "context": "Directory Naming Convention", "msgid": "Title Case", "msgstr": "标题式" }
 ]

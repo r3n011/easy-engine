@@ -5,6 +5,13 @@
 # bootstrap.ps1 会自动下载
 /tools/vswhere.exe
 
+# API 数据转储（本地分析用，可随时用 --dump-extension-api 重建）
+/datadump/
+
+# 验证套件运行时从 engine/ 拷贝的翻译文件
+/tools/verify-translation/*.po
+/tools/verify-translation/project.godot
+
 # ---- 构建产物 ----
 /bin/
 /obj/
