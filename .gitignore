@@ -1,0 +1,33 @@
+# ---- 第三方源码：不入库，用 bootstrap.ps1 拉取 ----
+/engine/
+/scratch/
+
+# bootstrap.ps1 会自动下载
+/tools/vswhere.exe
+
+# ---- 构建产物 ----
+/bin/
+/obj/
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.exp
+/backup/
+
+# ---- 临时与备份 ----
+*.bak
+*.tmp
+*.log
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
