@@ -7,9 +7,10 @@ config_version=5
 
 [application]
 
-config/name="Easy Engine Runtime"
-config/description="M1-M3：.ee 格式、IR、编译器、调度器、Godot 节点桥"
+config/name="Easy Engine"
+config/description="用积木做游戏：Godot 作内核，Scratch 积木作编程方式"
 config/features=PackedStringArray("4.7")
+run/main_scene="res://editor/editor.tscn"
 boot_splash/image="res://brand/icon.png"
 boot_splash/bg_color=Color(0.06, 0.07, 0.1, 1)
 config/icon="res://brand/icon.png"

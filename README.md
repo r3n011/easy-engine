@@ -10,6 +10,11 @@
 
 ---
 
+> ⚠️ **方案已修订为 v2：[把 Godot 本体改造成积木引擎](docs/PLAN-v2-改Godot.md)**
+>
+> 产品 = **我们改过的 Godot 编辑器**（engine/godot/modules/easyblocks/），
+> 不是在 Godot 之上另做一个程序。untime/ 那套降级为测试床与参考实现。
+
 ## 架构一句话
 
 ```

@@ -17,7 +17,7 @@
 
   "blocks": [
     { "id": "core.event.when_flag_clicked", "version": 1, "category": "event", "shape": "hat",
-      "message": "当 {ICON} 被点击", "args": {},
+      "message": "当 ▶ 被点击", "args": {},
       "branches": [ { "name": "BODY" } ],
       "ir": { "op": "event.hat", "kind": "flag", "body": { "$branch": "BODY" } } },
 

@@ -11,7 +11,10 @@ param(
     [string]$Out = "",
     # 截图前把鼠标移到窗口内某点，用来演示跟随鼠标的玩法
     [string]$MoveMouse = "",
-    [switch]$Diag
+    [switch]$Diag,
+    [string]$Scene = ""
+,
+    [string[]]$ExtraFlags = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,7 +42,8 @@ Get-Process -Name "godot*" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 
 Write-Host "启动播放器：$Project" -ForegroundColor Cyan
-$argLine = "--path `"$runtime`" --rendering-driver opengl3 player/player.tscn -- $Project" + $(if ($Diag) { " --debug" } else { "" })
+$sceneArg = if ($Scene) { "$Scene -- $Project" } else { "-- $Project" }
+$argLine = "--path `"$runtime`" --rendering-driver opengl3 $sceneArg"
 $proc = Start-Process -FilePath $Godot -ArgumentList $argLine -PassThru `
     -RedirectStandardOutput $log -RedirectStandardError "$log.err"
 
