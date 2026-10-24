@@ -29,10 +29,15 @@ class EasyBlocksEditorPlugin : public EditorPlugin {
 	// 当前选中的节点（积木就是"这个节点的脚本"）
 	Node *current_node = nullptr;
 	bool debug_bridge = false;
+	uint64_t last_apply_ms = 0;
+	bool undo_test_started = false;
+
+	void _test_undo();
 
 	void _on_selection_changed();
 	void _on_page_message(const String &p_text);
 	void _on_web_ready();
+	void _on_history_changed();
 	void _push_program_to_page();
 	void _push_assets_to_page();
 	void _apply_program(const Array &p_program, bool p_echo);

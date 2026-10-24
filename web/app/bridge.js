@@ -361,10 +361,12 @@
   function workspaceToProgram() {
     lastUnsupported = [];
     var program = [];
-    // 连续工具箱（continuous toolbox）会把分类里的积木画在主工作区，
-    // 它们不是用户的程序，必须排除。
+    // 连续工具箱会把分类里的积木画在**别的工作区**里，
+    // 它们不是用户的程序。三重过滤：不看浮出层、不看影子、必须属于本工作区。
     var tops = workspace ? workspace.getTopBlocks(true) : [];
-    tops = tops.filter(function (b) { return !b.isInFlyout && !isShadow(b); });
+    tops = tops.filter(function (b) {
+      return !b.isInFlyout && !isShadow(b) && b.workspace === workspace;
+    });
     tops.forEach(function (b) {
       var node = blockToEE(b);
       if (node) program.push({ top: node });
@@ -627,9 +629,9 @@
       var round = workspaceToProgram();
       lastSent = JSON.stringify(round.program);
       post({ type: 'program', program: round.program, unsupported: round.unsupported, echo: true,
-        tops: (workspace.getTopBlocks(true) || []).map(function (b) {
-          return b.type + '@' + (b.workspace ? b.workspace.id : '?') + (b.isInFlyout ? '(flyout)' : '');
-        }) });
+        tops: (workspace.getTopBlocks(true) || []).filter(function (b) {
+          return !b.isInFlyout && !isShadow(b) && b.workspace === workspace;
+        }).map(function (b) { return b.type; }) });
 
       if (round.unsupported.length) {
         toast('有 ' + round.unsupported.length + ' 个积木还不支持，暂时跳过：' + round.unsupported.join('、'), true);

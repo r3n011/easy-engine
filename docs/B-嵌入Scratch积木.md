@@ -418,6 +418,46 @@ getButtonCallback('CREATE_VARIABLE') → function
 运行时侧也验过：`换成 [跑步] 造型` 后 `AnimatedSprite2D.animation == "跑步"`，
 播放声音找到了 `AudioStreamPlayer`，无警告无错误。
 
+---
+
+## 撤销 / 重做接进 Godot
+
+改积木、以及"第一次给节点自动挂 BlockRunner"，现在都走 `EditorUndoRedoManager`：
+
+- **改积木**：一次动作 = `set_scripts(新)` + `compile`，撤销方法 = `set_scripts(旧)` + `compile`。
+  连续拖拽用 `UndoRedo::MERGE_ENDS` 合并成一步，不会把历史刷满。
+- **自动挂节点**：`add_child` + `set_owner` + `set_program` 是一个动作，
+  `add_do_reference(runner)` 让撤销栈替我们持有节点，撤销后还能重做回来。
+- 撤销/重做后 `history_changed` 会把最新积木推回网页（800ms 内的自己人操作除外，
+  免得把用户正在拖的积木冲掉）。
+
+验证（`EASYBLOCKS_TEST_UNDO=1` 时自动跑一次）：
+
+```
+撤销自测：数据已回退（277 → 229 字符）
+  撤销前 = …"NAME":{"value":"站立"}…
+  撤销后 = …"NAME":{"value":"跑步"}…
+```
+
+### 顺带修掉两个会**丢程序**的 bug
+
+这两个都是"数据被悄悄改成空"的级别，比崩溃更可怕：
+
+1. **页面刚就绪时还没选中节点，引擎推了一个空程序；页面回显空程序，引擎把它当成
+   一次真正的修改写了回去** —— 真脚本被覆盖成空。
+   修法：回显（`echo`）只做编译校验，**永远不写回资源**。
+
+2. **回显路径里调用了 `_ensure_runner`**，它把 `program` 从 `null` 换成了一个空资源，
+   于是 `_push_program_to_page` 里"`program` 为空就从 `program_json_path` 读文件"
+   这条分支再也不会走到 —— 程序永远是空的。
+   修法：回显路径不创建任何对象。
+
+3. （第三个，网页侧）**工具箱浮出层的积木会被当成用户程序**。
+   原来只过滤 `isInFlyout`，但这个版本里浮出层积木放在**另一个工作区**、
+   `isInFlyout` 是 false。于是点开一次分类，程序里就多出几个空积木。
+   修法：加一条 `b.workspace === workspace` 的硬判断。
+
+
 
 
 

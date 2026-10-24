@@ -13,9 +13,12 @@
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/os/os.h"
+#include "core/os/time.h"
 #include "core/string/ustring.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_data.h"
+#include "editor/editor_undo_redo_manager.h"
+#include "scene/main/scene_tree.h"
 #include "scene/2d/animated_sprite_2d.h"
 #include "scene/2d/audio_stream_player_2d.h"
 #include "scene/2d/sprite_2d.h"
@@ -61,6 +64,10 @@ EasyBlocksEditorPlugin::EasyBlocksEditorPlugin() {
 	if (sel != nullptr) {
 		sel->connect("selection_changed", callable_mp(this, &EasyBlocksEditorPlugin::_on_selection_changed));
 	}
+
+	// 撤销/重做后把最新的积木同步回网页
+	EditorUndoRedoManager::get_singleton()->connect("history_changed",
+			callable_mp(this, &EasyBlocksEditorPlugin::_on_history_changed));
 
 	// 演示/截图用：设了这个环境变量就把「积木」面板直接切到前台
 	if (OS::get_singleton()->has_environment("EASYBLOCKS_SHOW_PANEL")) {
@@ -135,19 +142,28 @@ BlockRunner *EasyBlocksEditorPlugin::_ensure_runner(Node *p_node) {
 	}
 
 	// 这个节点还没有积木：第一次写积木时自动挂一个运行器。
-	// 用 lazy 的方式（等真有积木才建），避免"点一下节点就多一个子节点"。
+	// 这一步也进撤销栈，否则用户 Ctrl+Z 撤不掉自己"没主动加过"的节点。
 	runner = memnew(BlockRunner);
 	runner->set_name("BlockRunner");
-	p_node->add_child(runner);
-
-	Node *root = EditorInterface::get_singleton()->get_edited_scene_root();
-	if (root != nullptr && root != p_node) {
-		runner->set_owner(root);
-	}
 
 	Ref<BlockProgram> program;
 	program.instantiate();
 	runner->set_program(program);
+
+	Node *root = EditorInterface::get_singleton()->get_edited_scene_root();
+
+	EditorUndoRedoManager *ur = EditorUndoRedoManager::get_singleton();
+	ur->create_action(String::utf8("挂上积木"));
+	ur->add_do_method(p_node, "add_child", runner, true);
+	if (root != nullptr) {
+		ur->add_do_method(runner, "set_owner", root);
+	}
+	ur->add_do_method(runner, "set_program", program);
+	// 让撤销栈替我们持有这个节点，撤销后还能重做回来
+	ur->add_do_reference(runner);
+	ur->add_undo_method(p_node, "remove_child", runner);
+	ur->commit_action();
+
 	return runner;
 }
 
@@ -274,6 +290,22 @@ void EasyBlocksEditorPlugin::_apply_program(const Array &p_program, bool p_echo)
 		return;
 	}
 
+	if (p_echo) {
+		// 回显只用来做往返校验：**不创建任何东西、不写回资源**。
+		// （踩过两次：一是"页面刚就绪、还没选中节点"时推的空程序会被写回，
+		//   二是这里顺手 _ensure_runner 会把 null 资源换成空资源，
+		//   导致后面再也不去读 program_json_path。）
+		BlockRunner *existing = _find_runner(target);
+		if (existing != nullptr && existing->get_program().is_valid()) {
+			const Error echo_err = existing->get_program()->compile();
+			if (debug_bridge) {
+				print_line(vformat(String::utf8("积木往返校验：网页回显 %d 段，编译 %s"),
+						p_program.size(), echo_err == OK ? String::utf8("通过") : String::utf8("有错")));
+			}
+		}
+		return;
+	}
+
 	BlockRunner *runner = _ensure_runner(target);
 	if (runner == nullptr) {
 		return;
@@ -285,7 +317,23 @@ void EasyBlocksEditorPlugin::_apply_program(const Array &p_program, bool p_echo)
 		runner->set_program(program);
 	}
 
-	program->set_scripts(p_program);
+	const Array old_scripts = program->get_scripts();
+
+	if (old_scripts == p_program) {
+		return; // 没变，别往撤销栈里塞空动作
+	}
+
+	// 每次修改都记为一步（连续拖拽用 MERGE_ENDS 合并成一步）
+	EditorUndoRedoManager *ur = EditorUndoRedoManager::get_singleton();
+	ur->create_action(String::utf8("修改积木"), UndoRedo::MERGE_ENDS);
+	ur->add_do_method(program.ptr(), "set_scripts", p_program);
+	ur->add_do_method(program.ptr(), "compile");
+	ur->add_undo_method(program.ptr(), "set_scripts", old_scripts);
+	ur->add_undo_method(program.ptr(), "compile");
+	ur->commit_action();
+
+	last_apply_ms = Time::get_singleton()->get_ticks_msec();
+
 	const Error err = program->compile();
 	if (err != OK) {
 		const Array errors = program->get_errors();
@@ -293,22 +341,46 @@ void EasyBlocksEditorPlugin::_apply_program(const Array &p_program, bool p_echo)
 			Dictionary e = errors[i];
 			ERR_PRINT(String::utf8("积木编译失败：") + String(e.get("message", String())));
 		}
-	} else {
-		if (debug_bridge) {
-			print_line(vformat(String::utf8("积木桥：已保存到 %s，%d 段脚本，IR %d 条"),
-					target->get_name(), p_program.size(), program->get_ir().size()));
-			print_line("积木桥：IR = " + JSON::stringify(program->get_ir(), "", false, true));
-		}
+	} else if (debug_bridge) {
+		print_line(vformat(String::utf8("积木桥：已保存到 %s，%d 段脚本，IR %d 条"),
+				target->get_name(), p_program.size(), program->get_ir().size()));
+		print_line("积木桥：IR = " + JSON::stringify(program->get_ir(), "", false, true));
 	}
 
-	if (!p_echo) {
-		EditorInterface::get_singleton()->mark_scene_as_unsaved();
-	} else {
-		if (debug_bridge) {
-			print_line(vformat(String::utf8("积木往返校验：网页回显 %d 段，编译 %s"),
-					p_program.size(), err == OK ? String::utf8("通过") : String::utf8("有错")));
-		}
+	EditorInterface::get_singleton()->mark_scene_as_unsaved();
+
+	// 自测：设了 EASYBLOCKS_TEST_UNDO 就等一秒半撤销一次，看数据有没有回去
+	if (!undo_test_started && OS::get_singleton()->has_environment("EASYBLOCKS_TEST_UNDO")) {
+		undo_test_started = true;
+		Ref<SceneTreeTimer> timer = get_tree()->create_timer(1.5);
+		timer->connect("timeout", callable_mp(this, &EasyBlocksEditorPlugin::_test_undo));
 	}
+}
+
+void EasyBlocksEditorPlugin::_test_undo() {
+	BlockRunner *runner = _find_runner(_active_node());
+	if (runner == nullptr || runner->get_program().is_null()) {
+		return;
+	}
+	const String before = JSON::stringify(runner->get_program()->get_scripts(), "", false, true);
+	EditorUndoRedoManager::get_singleton()->undo();
+	const String after = JSON::stringify(runner->get_program()->get_scripts(), "", false, true);
+	print_line(vformat(String::utf8("撤销自测：%s（%d → %d 字符）"),
+			before == after ? String::utf8("数据没变") : String::utf8("数据已回退"),
+			before.length(), after.length()));
+	if (debug_bridge) {
+		print_line("  撤销前=" + before);
+		print_line("  撤销后=" + after);
+	}
+}
+
+void EasyBlocksEditorPlugin::_on_history_changed() {
+	// 撤销/重做会让资源里的积木变了，网页得跟着刷新。
+	// 但自己刚提交的那次也会触发这个信号，别把用户正在拖的积木冲掉。
+	if (Time::get_singleton()->get_ticks_msec() - last_apply_ms < 800) {
+		return;
+	}
+	_push_program_to_page();
 }
 
 void EasyBlocksEditorPlugin::_on_page_message(const String &p_text) {
