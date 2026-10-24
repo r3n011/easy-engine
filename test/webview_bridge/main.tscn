@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node2D"]
+
+[node name="Runner" type="BlockRunner" parent="."]
+program_json_path = "res://program.json"
+debug_print = true

@@ -115,19 +115,76 @@ bin/easyblocks_web/            积木工作区网页
 
 ---
 
-## 下一步：把"网页"和"引擎"接起来
+## 桥：接通了（B2）
 
-现在网页里跑的是示例程序，还没有和 Godot 里选中的节点联动。要做的桥：
+现在网页和引擎是**双向**的：
 
-1. **网页 → 引擎**：`window.chrome.webview.postMessage({type:'changed', xml})`
-   编辑器收到后解析成积木树，写进选中节点挂的 `BlockProgram`（这就是进 `.tscn` 的那份）。
-2. **引擎 → 网页**：选中节点时，把它的 `BlockProgram.scripts` 转成 scratch-blocks 的 XML，
-   用 `web_view->eval(...)` 推给页面。
-3. **积木类型对齐**：Scratch 的积木 id（`motion_movesteps`、`control_repeat`…）
-   和我们 IR 的 op（`motion.move_steps`、`control.repeat`…）之间要有映射表。
-   大部分是 1:1；Easy Engine 特有的（物理、图形特效）需要自定义积木。
-4. **点运行**：`BlockProgram::compile()` → `BlockRunner::start()`（A 阶段已经通了）。
+```
+选中节点 / 打开场景
+      │  BlockProgram.scripts
+      ▼
+  eeLoadProgram(program)          ← 引擎调网页：把积木程序画成 Scratch 积木
+      │
+   用户拖积木
+      │  250ms 防抖
+      ▼
+  postMessage({type:'program'})   →  引擎：写进 BlockProgram → compile() → IR
+```
 
-第 3 步是产品级决定：
-- 用 Scratch 原版积木集 → 用户零学习成本，但 Scratch 有声音/造型等我们没有的能力，需要隐藏或实现
-- 只做我们自己的 97 个积木 → 需要自定义积木定义（形状仍由 scratch-blocks 画）
+验证方式和结果（`EASYBLOCKS_DEBUG=1` 时能看到日志）：
+
+```
+积木桥：节点=Main 脚本=1 段
+积木桥：已保存到 Main，1 段脚本，IR 1 条
+积木往返校验：网页回显 1 段，编译 通过
+```
+
+然后模拟"用户把重复次数从 10 改成 7"，引擎侧的 IR 立刻变成：
+
+```json
+{"op":"control.repeat","times":7.0,"body":[...]}
+```
+
+`times` 从 `10.0` 变成 `7.0` —— **网页里的编辑确实写进了引擎**。截图 `docs/shot-bridge.png` 里可以看到"重复执行 7 次"，以及标题栏的 `main(*)`（场景被标记为已修改）。
+
+### 积木怎么对应
+
+`web/app/bridge.js` 里一张表，一行一条：
+
+```js
+{ s: 'motion_movesteps', e: 'core.motion.move_steps', inputs: { STEPS: 'STEPS' } }
+{ s: 'looks_show',       e: 'core.looks.set_visible',  const: { MODE: 'show' } }
+{ s: 'event_whenflagclicked', e: 'core.event.when_flag_clicked', nextFrom: 'BODY' }
+```
+
+- `s` Scratch 的积木类型，`e` 我们的积木 id
+- `const` 处理"同一个积木的不同形态"（显示/隐藏、右转/左转）
+- `fields` / `inputs` / `substack` 对应三种数据：下拉框、值槽、语句槽
+- `nextFrom` 专门处理帽子积木（下面那串在 Scratch 里是 `next` 连接，在我们格式里是 `BODY`）
+
+加一个新积木的支持 = 加一行 + 在 C++ 里实现对应的 op。没加映射的积木会被**跳过并警告**，不会静默吞掉：
+
+```
+WARNING: 这些积木暂时还不支持，已跳过：looks_switchcostumeto
+```
+
+### 又踩了三个坑
+
+1. **连续工具箱会把分类里的积木画在主工作区。** `getTopBlocks()` 一开始把工具箱的积木也当成了用户程序，
+   于是"每一帧都多出几段脚本"。用 `b.isInFlyout` 和事件里的 `workspaceId` 过滤掉。
+2. **影子积木（数字框/文本框）不是积木。** `getInputTargetBlock()` 拿到的是 shadow，
+   要读它的字段值当普通字面量，不能递归当积木转换。
+3. **帽子积木的形状不一样。** Scratch 的帽子下面接 `next`，我们的格式里是 `BODY` 参数。
+   漏了这条，载入后就只剩一个孤零零的「当绿旗被点击」。
+
+---
+
+## 还没做的
+
+| 项 | 说明 |
+|---|---|
+| 积木覆盖 | 目前接了 52 种 Scratch 积木（运动/外观/控制/事件/侦测/运算/变量）。造型、声音、克隆、自制积木还没接 |
+| 撤销重做 | 网页里能撤销，但引擎侧的节点树改动还没走 `EditorUndoRedoManager` |
+| 自动挂载的撤销 | 第一次给节点写积木时会自动加一个 `BlockRunner` 子节点，这一步目前不进撤销栈 |
+| 运行按钮 | 现在靠 Godot 自己的运行（F5）跑整个项目；以后可以加"只运行当前角色" |
+
