@@ -81,6 +81,7 @@ private:
 	Array warnings;
 	bool started = false;
 	int trace_count = 0;
+	bool warned_list_show = false;
 
 	void _clear_threads();
 	RunnerThread *_new_thread(Node *p_target, const Array &p_body);
@@ -101,6 +102,17 @@ private:
 	Variant _get_var(const String &p_name, const String &p_scope, RunnerThread *t);
 	void _set_var(const String &p_name, const Variant &p_value, const String &p_scope, RunnerThread *t);
 	Array _get_list(const String &p_name, const String &p_scope, RunnerThread *t);
+	/** 取列表本体（可修改）。不存在就建一个空的。 */
+	Array *_list_ptr(const String &p_name);
+	/** Scratch 的下标语义：1 起，支持 last / random / any。 */
+	int _list_index(const Variant &p_index, int p_size, bool p_for_insert);
+
+public:
+	/** 给编辑器/测试做内省用的只读访问口。 */
+	Array get_list_values(const String &p_name) const;
+	Variant get_variable(const String &p_name) const;
+
+private:
 
 	void _warn(const String &p_msg);
 	void _fail(RunnerThread *t, const String &p_msg);

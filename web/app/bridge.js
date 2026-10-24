@@ -121,7 +121,20 @@
     // ---- 变量 ----
     { s: 'data_variable', e: 'core.data.var', fields: { VARIABLE: 'NAME' } },
     { s: 'data_setvariableto', e: 'core.data.set_var', fields: { VARIABLE: 'NAME' }, inputs: { VALUE: 'VALUE' } },
-    { s: 'data_changevariableby', e: 'core.data.change_var', fields: { VARIABLE: 'NAME' }, inputs: { VALUE: 'DELTA' } }
+    { s: 'data_changevariableby', e: 'core.data.change_var', fields: { VARIABLE: 'NAME' }, inputs: { VALUE: 'DELTA' } },
+
+    // ---- 列表 ----
+    { s: 'data_addtolist', e: 'core.data.list_add', fields: { LIST: 'NAME' }, inputs: { ITEM: 'VALUE' } },
+    { s: 'data_deleteoflist', e: 'core.data.list_delete', fields: { LIST: 'NAME' }, inputs: { INDEX: 'INDEX' } },
+    { s: 'data_deletealloflist', e: 'core.data.list_clear', fields: { LIST: 'NAME' } },
+    { s: 'data_insertatlist', e: 'core.data.list_insert', fields: { LIST: 'NAME' }, inputs: { INDEX: 'INDEX', ITEM: 'VALUE' } },
+    { s: 'data_replaceitemoflist', e: 'core.data.list_replace', fields: { LIST: 'NAME' }, inputs: { INDEX: 'INDEX', ITEM: 'VALUE' } },
+    { s: 'data_itemoflist', e: 'core.data.list_item', fields: { LIST: 'NAME' }, inputs: { INDEX: 'INDEX' } },
+    { s: 'data_lengthoflist', e: 'core.data.list_length', fields: { LIST: 'NAME' } },
+    { s: 'data_itemnumoflist', e: 'core.data.list_index_of', fields: { LIST: 'NAME' }, inputs: { ITEM: 'VALUE' } },
+    { s: 'data_listcontainsitem', e: 'core.data.list_contains', fields: { LIST: 'NAME' }, inputs: { ITEM: 'VALUE' } },
+    { s: 'data_showlist', e: 'core.data.list_show', const: { MODE: 'show' }, fields: { LIST: 'NAME' } },
+    { s: 'data_hidelist', e: 'core.data.list_show', const: { MODE: 'hide' }, fields: { LIST: 'NAME' } }
   ];
 
   const byScratch = {};
@@ -181,7 +194,14 @@
     // 字段
     var f = entry.fields || {};
     for (var sf in f) {
-      var fv = b.getFieldValue(sf);
+      var fv;
+      if (sf === 'VARIABLE' || sf === 'LIST') {
+        // 变量/列表字段的 getValue() 返回的是内部 id，这里要的是名字
+        var fld = b.getField ? b.getField(sf) : null;
+        fv = (fld && fld.getText) ? fld.getText() : b.getFieldValue(sf);
+      } else {
+        fv = b.getFieldValue(sf);
+      }
       if (fv !== null && fv !== undefined) node.inputs[f[sf]] = { value: fv };
     }
 
@@ -333,7 +353,9 @@
     for (var sf in f) {
       var box = inputs[f[sf]];
       if (box && 'value' in box && !isBlock(box.value)) {
-        x += '<field name="' + sf + '">' + escapeXml(box.value) + '</field>';
+        // 变量/列表字段必须带 variabletype，否则 Blockly 会按"普通变量"重建，类型对不上就抛错
+        var vt = (sf === 'LIST') ? ' variabletype="list"' : '';
+        x += '<field name="' + sf + '"' + vt + '>' + escapeXml(box.value) + '</field>';
       }
     }
 
@@ -397,6 +419,47 @@
     return xml;
   }
 
+  // 变量/列表必须先在工作区里存在，否则 field_variable 会抛
+  // "Variable type doesn't match this field"，整段程序都加载不出来。
+  function declareVariables(program) {
+    var seen = {};
+    function walk(b) {
+      if (!b || typeof b !== 'object') return;
+      var entry = pickEntry(b);
+      var inputs = b.inputs || {};
+      if (entry && entry.fields) {
+        for (var sf in entry.fields) {
+          if (sf !== 'VARIABLE' && sf !== 'LIST') continue;
+          var box = inputs[entry.fields[sf]];
+          if (box && 'value' in box && !isBlock(box.value)) {
+            seen[str(box.value)] = (sf === 'LIST') ? 'list' : '';
+          }
+        }
+      }
+      for (var k in inputs) {
+        if (inputs[k] && inputs[k].value) walk(inputs[k].value);
+        if (inputs[k] && inputs[k].stack) walk(inputs[k].stack);
+      }
+      if (b.next) walk(b.next);
+    }
+    (program || []).forEach(function (item) {
+      walk(item && item.top ? item.top : item);
+    });
+
+    for (var name in seen) {
+      if (!workspace.getVariable(name)) {
+        workspace.createVariable(name, seen[name]);
+      }
+    }
+    // 诊断：看看声明出来的变量类型对不对
+    if (window.EE_DEBUG) {
+      var now = (workspace.getAllVariables() || []).map(function (v) {
+        return v.name + ':' + (v.type || '(空)');
+      });
+      post({ type: 'debug', text: '声明的变量 = ' + JSON.stringify(seen) + ' ; 工作区里的 = ' + JSON.stringify(now) });
+    }
+  }
+
   // 引擎调用的入口
   window.eeLoadProgram = function (program) {
     if (!workspace) return;
@@ -413,6 +476,7 @@
     suppress = true;
     try {
       workspace.clear();
+      declareVariables(program);
       var xml = programToXml(program);
       Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);
 

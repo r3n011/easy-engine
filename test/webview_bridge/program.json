@@ -5,44 +5,84 @@
       "inputs": {
         "BODY": {
           "stack": {
-            "block": "core.motion.change_y",
-            "inputs": { "DY": { "value": 10 } },
+            "block": "core.data.list_clear",
+            "inputs": { "NAME": { "value": "清单" } },
             "next": {
-              "block": "core.sound.play",
-              "inputs": {
-                "NAME": { "value": "" },
-                "MODE": { "value": "wait" }
-              },
+              "block": "core.data.list_add",
+              "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "苹果" } },
               "next": {
-                "block": "core.looks.set_costume",
-                "inputs": { "MODE": { "value": "next" } },
+                "block": "core.data.list_add",
+                "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "香蕉" } },
                 "next": {
-                  "block": "core.control.repeat",
+                  "block": "core.data.list_insert",
                   "inputs": {
-                    "TIMES": { "value": 2 },
-                    "BODY": {
-                      "stack": {
-                        "block": "core.control.create_clone",
-                        "inputs": { "TARGET": { "value": "@self" } }
+                    "NAME": { "value": "清单" },
+                    "INDEX": { "value": 2 },
+                    "VALUE": { "value": "橙子" }
+                  },
+                  "next": {
+                    "block": "core.data.list_replace",
+                    "inputs": {
+                      "NAME": { "value": "清单" },
+                      "INDEX": { "value": 1 },
+                      "VALUE": { "value": "苹果2" }
+                    },
+                    "next": {
+                      "block": "core.data.set_var",
+                      "inputs": {
+                        "NAME": { "value": "项目数" },
+                        "VALUE": {
+                          "value": {
+                            "block": "core.data.list_length",
+                            "inputs": { "NAME": { "value": "清单" } }
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": "core.data.set_var",
+                        "inputs": {
+                          "NAME": { "value": "位置" },
+                          "VALUE": {
+                            "value": {
+                              "block": "core.data.list_index_of",
+                              "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "香蕉" } }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": "core.data.set_var",
+                          "inputs": {
+                            "NAME": { "value": "存在" },
+                            "VALUE": {
+                              "value": {
+                                "block": "core.data.list_contains",
+                                "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "橙子" } }
+                              }
+                            }
+                          },
+                          "next": {
+                            "block": "core.data.set_var",
+                            "inputs": {
+                              "NAME": { "value": "第二项" },
+                              "VALUE": {
+                                "value": {
+                                  "block": "core.data.list_item",
+                                  "inputs": { "NAME": { "value": "清单" }, "INDEX": { "value": 2 } }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": "core.data.list_delete",
+                              "inputs": { "NAME": { "value": "清单" }, "INDEX": { "value": 3 } }
+                            }
+                          }
+                        }
                       }
                     }
                   }
                 }
               }
             }
-          }
-        }
-      }
-    }
-  },
-  {
-    "top": {
-      "block": "core.event.when_clone_start",
-      "inputs": {
-        "BODY": {
-          "stack": {
-            "block": "core.motion.change_x",
-            "inputs": { "DX": { "value": 100 } }
           }
         }
       }

@@ -246,6 +246,11 @@ void EasyBlocksEditorPlugin::_on_page_message(const String &p_text) {
 		return;
 	}
 
+	if (type == "debug") {
+		print_line(String::utf8("积木调试：") + String(msg.get("text", String())));
+		return;
+	}
+
 	if (type == "ready" || type == "bridge_ready") {
 		_push_program_to_page();
 		return;

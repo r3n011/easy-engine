@@ -45,6 +45,8 @@ void BlockRunner::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_warnings"), &BlockRunner::get_warnings);
 	ClassDB::bind_method(D_METHOD("get_thread_count"), &BlockRunner::get_thread_count);
 	ClassDB::bind_method(D_METHOD("get_time"), &BlockRunner::get_time);
+	ClassDB::bind_method(D_METHOD("get_list_values", "name"), &BlockRunner::get_list_values);
+	ClassDB::bind_method(D_METHOD("get_variable", "name"), &BlockRunner::get_variable);
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "program", PROPERTY_HINT_RESOURCE_TYPE, "BlockProgram"), "set_program", "get_program");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "program_json_path", PROPERTY_HINT_FILE, "*.json"), "set_program_json_path", "get_program_json_path");
@@ -517,6 +519,46 @@ Array BlockRunner::_get_list(const String &p_name, const String &p_scope, Runner
 	return *a;
 }
 
+Array *BlockRunner::_list_ptr(const String &p_name) {
+	Array *a = global_lists.getptr(p_name);
+	if (a == nullptr) {
+		global_lists[p_name] = Array();
+		a = global_lists.getptr(p_name);
+	}
+	return a;
+}
+
+int BlockRunner::_list_index(const Variant &p_index, int p_size, bool p_for_insert) {
+	const String s = EBValues::to_string(p_index).strip_edges().to_lower();
+	const int max_idx = p_size + (p_for_insert ? 1 : 0);
+
+	if (s == "last" || s == String::utf8("最后一个")) {
+		return MAX(1, p_size);
+	}
+	if (s == "random" || s == String::utf8("随机") || s == "any" || s == String::utf8("任意")) {
+		return p_size > 0 ? int(Math::rand() % uint32_t(p_size)) + 1 : 1;
+	}
+
+	int idx = int(EBValues::to_number(p_index));
+	if (idx < 1) {
+		idx = 1;
+	}
+	if (idx > max_idx) {
+		idx = max_idx;
+	}
+	return idx;
+}
+
+Array BlockRunner::get_list_values(const String &p_name) const {
+	const Array *a = global_lists.getptr(p_name);
+	return a ? *a : Array();
+}
+
+Variant BlockRunner::get_variable(const String &p_name) const {
+	const Variant *v = globals.getptr(p_name);
+	return v ? *v : Variant();
+}
+
 // ============================================================ 造型 / 声音 / 克隆
 
 void BlockRunner::_apply_costume(Node *p_target, const String &p_name, const String &p_mode) {
@@ -885,6 +927,82 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 		const String scope = str("scope");
 		Variant cur = _get_var(name, scope, t);
 		_set_var(name, EBValues::to_number(cur) + num("delta"), scope, t);
+		return Variant();
+	}
+
+	// ---- 列表 ----
+	if (op_id == "list.add") {
+		_list_ptr(str("name"))->push_back(arg("value"));
+		return Variant();
+	}
+	if (op_id == "list.clear") {
+		_list_ptr(str("name"))->clear();
+		return Variant();
+	}
+	if (op_id == "list.delete") {
+		Array *a = _list_ptr(str("name"));
+		const String idx_s = EBValues::to_string(arg("index")).strip_edges().to_lower();
+		if (idx_s == "all" || idx_s == String::utf8("全部")) {
+			a->clear();
+			return Variant();
+		}
+		const int i = _list_index(arg("index"), a->size(), false);
+		if (i >= 1 && i <= a->size()) {
+			a->remove_at(i - 1);
+		}
+		return Variant();
+	}
+	if (op_id == "list.insert") {
+		Array *a = _list_ptr(str("name"));
+		const int i = _list_index(arg("index"), a->size(), true);
+		a->insert(i - 1, arg("value"));
+		return Variant();
+	}
+	if (op_id == "list.replace") {
+		Array *a = _list_ptr(str("name"));
+		const int i = _list_index(arg("index"), a->size(), false);
+		if (i >= 1 && i <= a->size()) {
+			a->set(i - 1, arg("value"));
+		}
+		return Variant();
+	}
+	if (op_id == "list.get" || op_id == "list.item") {
+		Array *a = _list_ptr(str("name"));
+		const int i = _list_index(arg("index"), a->size(), false);
+		if (i >= 1 && i <= a->size()) {
+			return (*a)[i - 1];
+		}
+		return Variant(String());
+	}
+	if (op_id == "list.length") {
+		return _list_ptr(str("name"))->size();
+	}
+	if (op_id == "list.index_of") {
+		Array *a = _list_ptr(str("name"));
+		const Variant needle = arg("value");
+		for (int i = 0; i < a->size(); i++) {
+			if (EBValues::equals((*a)[i], needle)) {
+				return i + 1;
+			}
+		}
+		return 0;
+	}
+	if (op_id == "list.contains") {
+		Array *a = _list_ptr(str("name"));
+		const Variant needle = arg("value");
+		for (int i = 0; i < a->size(); i++) {
+			if (EBValues::equals((*a)[i], needle)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	if (op_id == "list.show") {
+		// 列表在舞台上的显示还没做（需要 UI 层），但数据是好的
+		if (!warned_list_show) {
+			warned_list_show = true;
+			_warn(String::utf8("列表的显示/隐藏还没实现（数据会正常记录）"));
+		}
 		return Variant();
 	}
 
