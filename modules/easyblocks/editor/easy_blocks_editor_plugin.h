@@ -34,6 +34,7 @@ class EasyBlocksEditorPlugin : public EditorPlugin {
 	void _on_page_message(const String &p_text);
 	void _on_web_ready();
 	void _push_program_to_page();
+	void _push_assets_to_page();
 	void _apply_program(const Array &p_program, bool p_echo);
 
 	Node *_active_node() const;

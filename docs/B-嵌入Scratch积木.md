@@ -382,6 +382,43 @@ getButtonCallback('CREATE_VARIABLE') → function
 对话框是自己写的（`web/app/dialogs.js`），没用 `window.prompt` ——
 因为"制作新的积木"需要多参数编辑，prompt 做不了，而且样式也跟编辑器不搭。
 
+---
+
+## 造型 / 声音下拉：列项目里真实的资源
+
+以前这两个下拉是 scratch-blocks 的默认值（`costume1`、`costume2`…），
+用户得手打名字，打错就静默无效。现在改成从场景里读真资源。
+
+### 引擎侧（`_push_assets_to_page`）
+
+选中节点或页面就绪时，把资源清单推给网页：
+
+| 类型 | 从哪读 |
+|---|---|
+| 造型 | `AnimatedSprite2D` 的 `SpriteFrames` 动画名；或 `Sprite2D` 的图集帧号（1..n） |
+| 声音 | 节点子树里的 `AudioStreamPlayer` / `AudioStreamPlayer2D` 子节点名字 |
+
+选中父节点时会**向下找**第一个 sprite，所以点场景根节点也能看到角色的造型。
+
+### 网页侧
+
+`eeSetAssets({costumes, sounds})` 收到后，包一层 `looks_costume` / `sound_sounds_menu`
+这两个影子积木的 `init`，把它们字段的 `menuGenerator_` 换成真实列表。
+
+验证（真编辑器里，`EE_DEBUG` 打开）：
+
+```
+积木桥：推资源 造型=2 声音=1 就绪=true
+积木调试：资源清单：造型=["站立","跑步"] 声音=["AudioStreamPlayer"]
+积木调试：下拉菜单：造型=["站立","跑步"] 声音=["AudioStreamPlayer"]
+```
+
+最后一行是**从积木字段里读回来的**，不是我们推过去的原样 —— 证明下拉真的换了。
+
+运行时侧也验过：`换成 [跑步] 造型` 后 `AnimatedSprite2D.animation == "跑步"`，
+播放声音找到了 `AudioStreamPlayer`，无警告无错误。
+
+
 
 
 

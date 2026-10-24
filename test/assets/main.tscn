@@ -1,0 +1,30 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://observer.gd" id="1_obs"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_1"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": "站立",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": "跑步",
+"speed": 5.0
+}]
+
+[node name="Main" type="Node2D"]
+
+[node name="Hero" type="AnimatedSprite2D" parent="."]
+sprite_frames = SubResource("SpriteFrames_1")
+animation = "站立"
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Hero"]
+
+[node name="Runner" type="BlockRunner" parent="Hero"]
+program_json_path = "res://program.json"
+
+[node name="Observer" type="Node" parent="."]
+script = ExtResource("1_obs")

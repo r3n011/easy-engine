@@ -149,6 +149,44 @@
   var lastSent = null;       // 上一次推给引擎的程序，用来去重
   var lastUnsupported = [];
 
+  // 当前角色身上真实存在的造型 / 声音（引擎推过来的）
+  var assetCostumes = [];
+  var assetSounds = [];
+
+  // 把 Scratch 的造型/声音下拉换成项目里真实的资源。
+  // 做法是包一层积木的 init：它建好字段后，我们把选项表替换掉。
+  function patchMenu(blockType, fieldName, getList) {
+    var def = Blockly.Blocks ? Blockly.Blocks[blockType] : null;
+    if (!def || !def.init || def.__eeMenuPatched) return;
+    var orig = def.init;
+    def.init = function () {
+      orig.call(this);
+      var list = getList();
+      if (!list || !list.length) return;
+      var field = this.getField ? this.getField(fieldName) : null;
+      if (field) {
+        field.menuGenerator_ = list.map(function (x) { return [String(x), String(x)]; });
+      }
+    };
+    def.__eeMenuPatched = true;
+  }
+
+  function patchAssetMenus() {
+    patchMenu('looks_costume', 'COSTUME', function () { return assetCostumes; });
+    patchMenu('sound_sounds_menu', 'SOUND_MENU', function () { return assetSounds; });
+  }
+
+  // 引擎调：更新资源清单
+  window.eeSetAssets = function (assets) {
+    assetCostumes = (assets && assets.costumes) || [];
+    assetSounds = (assets && assets.sounds) || [];
+    patchAssetMenus();
+    if (window.EE_DEBUG) {
+      post({ type: 'debug', text: '资源清单：造型=' + JSON.stringify(assetCostumes) +
+        ' 声音=' + JSON.stringify(assetSounds) });
+    }
+  };
+
   // ---------------------------------------------------------------- 工具
 
   function post(obj) {
@@ -596,6 +634,22 @@
       if (round.unsupported.length) {
         toast('有 ' + round.unsupported.length + ' 个积木还不支持，暂时跳过：' + round.unsupported.join('、'), true);
       }
+
+      if (window.EE_DEBUG) {
+        var costumeMenu = null;
+        var soundMenu = null;
+        workspace.getAllBlocks(false).forEach(function (b) {
+          if (b.type === 'looks_costume' && !costumeMenu) {
+            var f = b.getField('COSTUME');
+            costumeMenu = (f && f.menuGenerator_) ? f.menuGenerator_.map(function (o) { return o[0]; }) : null;
+          }
+          if (b.type === 'sound_sounds_menu' && !soundMenu) {
+            var g = b.getField('SOUND_MENU');
+            soundMenu = (g && g.menuGenerator_) ? g.menuGenerator_.map(function (o) { return o[0]; }) : null;
+          }
+        });
+        post({ type: 'debug', text: '下拉菜单：造型=' + JSON.stringify(costumeMenu) + ' 声音=' + JSON.stringify(soundMenu) });
+      }
     } catch (e) {
       post({ type: 'js_error', message: String(e && e.stack ? e.stack : e) });
     } finally {
@@ -617,6 +671,7 @@
 
   window.eeAttach = function (pWorkspace) {
     workspace = pWorkspace;
+    patchAssetMenus();
 
     // ---- 分类回调：变量 / 列表 / 自制积木 ----
     // 工具箱里这两个分类是 custom="VARIABLE" / custom="PROCEDURE"，

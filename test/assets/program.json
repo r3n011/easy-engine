@@ -1,0 +1,8 @@
+[
+  { "top": { "block": "core.event.when_flag_clicked", "inputs": { "BODY": { "stack": {
+      "block": "core.looks.set_costume", "inputs": { "NAME": { "value": "跑步" } },
+      "next": {
+        "block": "core.sound.play", "inputs": { "NAME": { "value": "AudioStreamPlayer" } }
+      }
+  } } } } }
+]

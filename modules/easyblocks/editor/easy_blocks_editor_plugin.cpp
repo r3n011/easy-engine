@@ -16,6 +16,10 @@
 #include "core/string/ustring.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_data.h"
+#include "scene/2d/animated_sprite_2d.h"
+#include "scene/2d/audio_stream_player_2d.h"
+#include "scene/2d/sprite_2d.h"
+#include "scene/audio/audio_stream_player.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/label.h"
 
@@ -90,6 +94,7 @@ void EasyBlocksEditorPlugin::_on_selection_changed() {
 	}
 	const TypedArray<Node> nodes = sel->get_selected_nodes();
 	current_node = (nodes.size() == 1) ? Object::cast_to<Node>(nodes[0]) : nullptr;
+	_push_assets_to_page();
 	_push_program_to_page();
 }
 
@@ -108,10 +113,11 @@ BlockRunner *EasyBlocksEditorPlugin::_find_runner(Node *p_node) const {
 	if (self_runner != nullptr) {
 		return self_runner;
 	}
+	// 递归找：选中父节点时也应该能看到子角色挂的积木
 	for (int i = 0; i < p_node->get_child_count(); i++) {
-		BlockRunner *child = Object::cast_to<BlockRunner>(p_node->get_child(i));
-		if (child != nullptr) {
-			return child;
+		BlockRunner *found = _find_runner(p_node->get_child(i));
+		if (found != nullptr) {
+			return found;
 		}
 	}
 	return nullptr;
@@ -187,7 +193,79 @@ void EasyBlocksEditorPlugin::_push_program_to_page() {
 }
 
 void EasyBlocksEditorPlugin::_on_web_ready() {
+	_push_assets_to_page();
 	_push_program_to_page();
+}
+
+// 把角色身上真实存在的"造型"和"声音"推给网页，
+// 这样积木里的下拉菜单列的是项目里真有的东西，而不是让用户手打名字。
+void EasyBlocksEditorPlugin::_push_assets_to_page() {
+	if (web_view == nullptr || !web_view->is_ready()) {
+		return;
+	}
+
+	Node *node = _active_node();
+	if (node == nullptr) {
+		return;
+	}
+
+	Array costumes;
+	Array sounds;
+
+	// 声音：节点自己或子树里的 AudioStreamPlayer / AudioStreamPlayer2D
+	for (int i = 0; i < node->get_child_count(); i++) {
+		Node *child = node->get_child(i);
+		if (Object::cast_to<AudioStreamPlayer>(child) != nullptr ||
+				Object::cast_to<AudioStreamPlayer2D>(child) != nullptr) {
+			sounds.push_back(String(child->get_name()));
+			continue;
+		}
+		for (int j = 0; j < child->get_child_count(); j++) {
+			Node *grand = child->get_child(j);
+			if (Object::cast_to<AudioStreamPlayer>(grand) != nullptr ||
+					Object::cast_to<AudioStreamPlayer2D>(grand) != nullptr) {
+				sounds.push_back(String(grand->get_name()));
+			}
+		}
+	}
+
+	// 造型：选中节点本身是 sprite 就用它；否则在子树里找第一个 sprite
+	Node *visual = node;
+	if (Object::cast_to<AnimatedSprite2D>(visual) == nullptr && Object::cast_to<Sprite2D>(visual) == nullptr) {
+		visual = nullptr;
+		for (int i = 0; i < node->get_child_count() && visual == nullptr; i++) {
+			Node *child = node->get_child(i);
+			if (Object::cast_to<AnimatedSprite2D>(child) != nullptr || Object::cast_to<Sprite2D>(child) != nullptr) {
+				visual = child;
+			}
+		}
+	}
+
+	if (AnimatedSprite2D *anim = Object::cast_to<AnimatedSprite2D>(visual)) {
+		Ref<SpriteFrames> frames = anim->get_sprite_frames();
+		if (frames.is_valid()) {
+			const PackedStringArray names = frames->get_animation_names();
+			for (int i = 0; i < names.size(); i++) {
+				costumes.push_back(names[i]);
+			}
+		}
+	} else if (Sprite2D *sprite = Object::cast_to<Sprite2D>(visual)) {
+		const int total = sprite->get_hframes() * sprite->get_vframes();
+		for (int i = 0; i < total; i++) {
+			costumes.push_back(itos(i + 1));
+		}
+	}
+
+	Dictionary assets;
+	assets["costumes"] = costumes;
+	assets["sounds"] = sounds;
+	const String js = "window.eeSetAssets && window.eeSetAssets(" +
+			JSON::stringify(assets, "", false, true) + ")";
+	if (debug_bridge) {
+		print_line(vformat(String::utf8("积木桥：推资源 造型=%d 声音=%d 就绪=%s"),
+				costumes.size(), sounds.size(), web_view->is_ready() ? "true" : "false"));
+	}
+	web_view->eval(js);
 }
 
 void EasyBlocksEditorPlugin::_apply_program(const Array &p_program, bool p_echo) {
@@ -252,6 +330,7 @@ void EasyBlocksEditorPlugin::_on_page_message(const String &p_text) {
 	}
 
 	if (type == "ready" || type == "bridge_ready") {
+		_push_assets_to_page();
 		_push_program_to_page();
 		return;
 	}
