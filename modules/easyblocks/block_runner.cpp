@@ -13,7 +13,15 @@
 #include "core/io/file_access.h"
 #include "core/math/math_funcs.h"
 #include "core/object/class_db.h"
+#include "core/object/object.h"
+#include "scene/2d/animated_sprite_2d.h"
+#include "scene/2d/audio_stream_player_2d.h"
 #include "scene/2d/node_2d.h"
+#include "scene/2d/sprite_2d.h"
+#include "scene/audio/audio_stream_player.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/window.h"
+#include "scene/resources/sprite_frames.h"
 
 // 单帧单线程的 op 预算：防止String::utf8("不让步的死循环")把程序卡死
 static const int MAX_OPS_PER_FRAME = 2000000;
@@ -142,13 +150,26 @@ BlockRunner::~BlockRunner() {
 }
 
 Error BlockRunner::start() {
+	return _start_impl(false);
+}
+
+int BlockRunner::start_clone_hats() {
+	if (_start_impl(true) != OK) {
+		return 0;
+	}
+	return threads.size();
+}
+
+Error BlockRunner::_start_impl(bool p_clone_only) {
 	_clear_threads();
-	errors.clear();
-	warnings.clear();
-	now = 0.0;
-	frame_count = 0;
-	globals.clear();
-	global_lists.clear();
+	if (!p_clone_only) {
+		errors.clear();
+		warnings.clear();
+		now = 0.0;
+		frame_count = 0;
+		globals.clear();
+		global_lists.clear();
+	}
 
 	// 程序来源：显式资源优先，其次从 JSON 文件读
 	if (program.is_null() && !program_json_path.is_empty()) {
@@ -194,6 +215,12 @@ Error BlockRunner::start() {
 		Dictionary hat = ir[i];
 		if (String(hat.get("op", String())) != "event.hat") {
 			_warn(String::utf8("脚本的第 1 个积木不是帽子积木，忽略"));
+			continue;
+		}
+		// 克隆体的帽子只由 start_clone_hats() 启动；普通启动时跳过它，
+		// 否则每造一个克隆体就会把"绿旗"脚本再跑一遍。
+		const bool clone_hat = String(hat.get("kind", String())) == "clone_start";
+		if (clone_hat != p_clone_only) {
 			continue;
 		}
 		Array body = hat.get("body", Array());
@@ -257,11 +284,30 @@ void BlockRunner::_step(double p_delta) {
 					t->status = THREAD_RUNNING;
 				}
 				break;
-			case THREAD_YIELD_UNTIL:
-				if (EBValues::to_bool(_eval(t, t->wait_cond))) {
+			case THREAD_YIELD_UNTIL: {
+				bool resume = false;
+				if (t->wait_audio.is_valid()) {
+					// 等音频播完
+					Object *obj = ObjectDB::get_instance(t->wait_audio);
+					if (obj == nullptr) {
+						resume = true; // 播放器没了，别永远等下去
+					} else if (AudioStreamPlayer *p = Object::cast_to<AudioStreamPlayer>(obj)) {
+						resume = !p->is_playing();
+					} else if (AudioStreamPlayer2D *p2 = Object::cast_to<AudioStreamPlayer2D>(obj)) {
+						resume = !p2->is_playing();
+					} else {
+						resume = true;
+					}
+					if (resume) {
+						t->wait_audio = ObjectID();
+					}
+				} else {
+					resume = EBValues::to_bool(_eval(t, t->wait_cond));
+				}
+				if (resume) {
 					t->status = THREAD_RUNNING;
 				}
-				break;
+			} break;
 			default:
 				break;
 		}
@@ -434,9 +480,17 @@ Node *BlockRunner::_resolve_target(RunnerThread *t, const Variant &p_ref) {
 		return this;
 	}
 	if (ref.begins_with("@")) {
-		return nullptr; // @stage / @mouse 等在 A2 补
+		return nullptr; // @stage / @mouse 等在后面补
 	}
-	return get_node_or_null(NodePath(ref));
+	Node *found = get_node_or_null(NodePath(ref));
+	if (found != nullptr) {
+		return found;
+	}
+	// 纯名字（Scratch 里「克隆 [角色名]」就是这么给的）：全场景找一次
+	if (get_tree() != nullptr) {
+		found = get_tree()->get_root()->find_child(ref, true, false);
+	}
+	return found;
 }
 
 // ============================================================ 变量
@@ -463,8 +517,121 @@ Array BlockRunner::_get_list(const String &p_name, const String &p_scope, Runner
 	return *a;
 }
 
-void BlockRunner::_warn(const String &p_msg) {
-	if (warnings.size() < 200) {
+// ============================================================ 造型 / 声音 / 克隆
+
+void BlockRunner::_apply_costume(Node *p_target, const String &p_name, const String &p_mode) {
+	if (p_target == nullptr) {
+		return;
+	}
+
+	// AnimatedSprite2D：造型 = 动画
+	if (AnimatedSprite2D *anim = Object::cast_to<AnimatedSprite2D>(p_target)) {
+		Ref<SpriteFrames> frames = anim->get_sprite_frames();
+		if (frames.is_null()) {
+			return;
+		}
+		const PackedStringArray names = frames->get_animation_names();
+		if (names.is_empty()) {
+			return;
+		}
+		String next;
+		const bool go_next = (p_mode == "next") || p_name.is_empty();
+		if (go_next) {
+			const int idx = names.find(anim->get_animation());
+			next = names[(idx + 1) % names.size()];
+		} else if (p_name.is_valid_int()) {
+			const int idx = p_name.to_int();
+			if (idx >= 0 && idx < names.size()) {
+				next = names[idx];
+			}
+		} else if (frames->has_animation(p_name)) {
+			next = p_name;
+		}
+		if (!next.is_empty()) {
+			anim->set_animation(next);
+			anim->play();
+		}
+		return;
+	}
+
+	// Sprite2D：造型 = 图集里的第几帧
+	if (Sprite2D *sprite = Object::cast_to<Sprite2D>(p_target)) {
+		const int total = sprite->get_hframes() * sprite->get_vframes();
+		if (total <= 1) {
+			return;
+		}
+		int frame = sprite->get_frame();
+		if (p_mode == "next") {
+			frame = (frame + 1) % total;
+		} else if (p_name.is_valid_int()) {
+			frame = CLAMP(p_name.to_int(), 0, total - 1);
+		}
+		sprite->set_frame(frame);
+	}
+}
+
+Node *BlockRunner::_find_audio(Node *p_target, const String &p_name) {
+	if (p_target == nullptr) {
+		return nullptr;
+	}
+	if (!p_name.is_empty()) {
+		Node *by_name = p_target->find_child(p_name, true, false);
+		if (by_name != nullptr &&
+				(Object::cast_to<AudioStreamPlayer>(by_name) != nullptr || Object::cast_to<AudioStreamPlayer2D>(by_name) != nullptr)) {
+			return by_name;
+		}
+	}
+	for (int i = 0; i < p_target->get_child_count(); i++) {
+		Node *child = p_target->get_child(i);
+		if (Object::cast_to<AudioStreamPlayer>(child) != nullptr || Object::cast_to<AudioStreamPlayer2D>(child) != nullptr) {
+			return child;
+		}
+	}
+	return nullptr;
+}
+
+void BlockRunner::_stop_all_sounds(Node *p_target) {
+	if (p_target == nullptr) {
+		return;
+	}
+	for (int i = 0; i < p_target->get_child_count(); i++) {
+		Node *child = p_target->get_child(i);
+		if (AudioStreamPlayer *p = Object::cast_to<AudioStreamPlayer>(child)) {
+			p->stop();
+		} else if (AudioStreamPlayer2D *p2 = Object::cast_to<AudioStreamPlayer2D>(child)) {
+			p2->stop();
+		}
+	}
+}
+
+BlockRunner *BlockRunner::_find_runner_in(Node *p_node) const {
+	if (p_node == nullptr) {
+		return nullptr;
+	}
+	if (BlockRunner *r = Object::cast_to<BlockRunner>(p_node)) {
+		return r;
+	}
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		if (BlockRunner *r = _find_runner_in(p_node->get_child(i))) {
+			return r;
+		}
+	}
+	return nullptr;
+}
+
+int BlockRunner::_alive_clones() {
+	int alive = 0;
+	for (int i = clones.size() - 1; i >= 0; i--) {
+		if (ObjectDB::get_instance(clones[i]) == nullptr) {
+			clones.remove_at(i);
+		} else {
+			alive++;
+		}
+	}
+	return alive;
+}
+
+void BlockRunner::_warn(const String &p_msg) {	if (warnings.size() < 200) {
 		warnings.push_back(p_msg);
 	}
 	if (debug_print) {
@@ -627,6 +794,80 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 	if (op_id == "looks.set_visible") {
 		if (CanvasItem *ci = Object::cast_to<CanvasItem>(target)) {
 			ci->set_visible(EBValues::to_bool(arg("visible")));
+		}
+		return Variant();
+	}
+	if (op_id == "looks.set_costume") {
+		// 造型 = AnimatedSprite2D 的动画 / Sprite2D 的帧
+		_apply_costume(target, str("name"), str("mode"));
+		return Variant();
+	}
+
+	// ---- 声音 ----
+	if (op_id == "sound.play") {
+		Node *player = _find_audio(target, str("name"));
+		if (player == nullptr) {
+			_warn(String::utf8("这个角色下面没有音频播放器，播不了声音：") + str("name"));
+			return Variant();
+		}
+		if (AudioStreamPlayer *p = Object::cast_to<AudioStreamPlayer>(player)) {
+			p->play();
+		} else if (AudioStreamPlayer2D *p2 = Object::cast_to<AudioStreamPlayer2D>(player)) {
+			p2->play();
+		}
+		// "播放声音等待播完"：把线程挂到播放器上，等它停下来
+		if (EBValues::to_bool(arg("wait"))) {
+			t->wait_audio = player->get_instance_id();
+			t->status = THREAD_YIELD_UNTIL;
+			t->wait_cond = Variant();
+		}
+		return Variant();
+	}
+	if (op_id == "sound.stop_all") {
+		_stop_all_sounds(target);
+		return Variant();
+	}
+
+	// ---- 克隆体 ----
+	if (op_id == "control.clone_create") {
+		Node *src = _resolve_target(t, p_op.get("target", Variant("@self")));
+		if (src != nullptr && src->get_parent() != nullptr) {
+			if (_alive_clones() >= 300) {
+				_warn(String::utf8("克隆体数量已达上限 300，不再创建"));
+				return Variant();
+			}
+			Node *dup = src->duplicate();
+			if (dup != nullptr) {
+				// 起个不重名的名字：Hero_clone、Hero_clone2、Hero_clone3……
+				const String base = String(src->get_name()) + String("_clone");
+				Node *parent = src->get_parent();
+				String unique = base;
+				int suffix = 2;
+				while (parent->has_node(NodePath(unique))) {
+					unique = base + itos(suffix++);
+				}
+				dup->set_name(unique);
+				dup->set_meta(StringName("ee_clone"), true);
+				// 克隆体不能重跑"绿旗"脚本：先关掉自动启动，加进场景后再只启动克隆帽子
+				BlockRunner *clone_runner = _find_runner_in(dup);
+				if (clone_runner != nullptr) {
+					clone_runner->set_auto_start(false);
+				}
+				src->get_parent()->add_child(dup);
+				clones.push_back(dup->get_instance_id());
+				if (clone_runner != nullptr) {
+					clone_runner->start_clone_hats();
+				}
+			}
+		}
+		return Variant();
+	}
+	if (op_id == "control.clone_delete") {
+		// 只有克隆体才能删自己（和 Scratch 一致），别把原角色删了
+		if (target != nullptr && bool(target->get_meta(StringName("ee_clone"), false))) {
+			target->queue_free();
+		} else {
+			_warn(String::utf8("「删除此克隆体」只在克隆体里生效"));
 		}
 		return Variant();
 	}

@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://observer.gd" id="1_obs"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Hero" type="Sprite2D" parent="."]
+hframes = 2
+
+[node name="Runner" type="BlockRunner" parent="Hero"]
+program_json_path = "res://program.json"
+debug_print = true
+
+[node name="Observer" type="Node" parent="."]
+script = ExtResource("1_obs")

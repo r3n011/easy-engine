@@ -57,6 +57,7 @@ private:
 		int status = THREAD_RUNNING;
 		double resume_at = 0.0;
 		Variant wait_cond;
+		ObjectID wait_audio; // 等音频播完（wait until 的一种特例）
 		int warp_depth = 0;
 		double warp_started = 0.0;
 		String error;
@@ -72,6 +73,7 @@ private:
 	Vector<RunnerThread *> threads;
 	HashMap<String, Variant> globals;
 	HashMap<String, Array> global_lists;
+	Vector<ObjectID> clones; // 本运行器造出来的克隆体
 
 	double now = 0.0;
 	int frame_count = 0;
@@ -103,6 +105,15 @@ private:
 	void _warn(const String &p_msg);
 	void _fail(RunnerThread *t, const String &p_msg);
 
+	// ---- 造型 / 声音 / 克隆 ----
+	void _apply_costume(Node *p_target, const String &p_name, const String &p_mode);
+	Node *_find_audio(Node *p_target, const String &p_name);
+	void _stop_all_sounds(Node *p_target);
+	BlockRunner *_find_runner_in(Node *p_node) const;
+	int _alive_clones();
+
+	Error _start_impl(bool p_clone_only);
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -125,6 +136,8 @@ public:
 
 	/** 启动：编译程序（如需要）并启动所有帽子脚本。 */
 	Error start();
+	/** 作为克隆体启动：只跑「作为克隆体启动时」的脚本。 */
+	int start_clone_hats();
 	void stop();
 
 	Array get_errors() const;

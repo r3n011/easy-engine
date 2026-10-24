@@ -62,6 +62,34 @@
     { s: 'looks_hide', e: 'core.looks.set_visible', const: { MODE: 'hide' } },
     { s: 'looks_setsizeto', e: 'core.looks.set_size', const: { MODE: 'set' }, inputs: { SIZE: 'PCT' } },
     { s: 'looks_changesizeby', e: 'core.looks.set_size', const: { MODE: 'change' }, inputs: { CHANGE: 'PCT' } },
+    {
+      s: 'looks_switchcostumeto', e: 'core.looks.set_costume', const: { MODE: 'set' },
+      inputs: { COSTUME: 'NAME' },
+      shadows: { COSTUME: { type: 'looks_costume', field: 'COSTUME' } }
+    },
+    { s: 'looks_nextcostume', e: 'core.looks.set_costume', const: { MODE: 'next' } },
+
+    // ---- 声音 ----
+    {
+      s: 'sound_play', e: 'core.sound.play', const: { MODE: 'start' },
+      inputs: { SOUND_MENU: 'NAME' },
+      shadows: { SOUND_MENU: { type: 'sound_sounds_menu', field: 'SOUND_MENU' } }
+    },
+    {
+      s: 'sound_playuntildone', e: 'core.sound.play', const: { MODE: 'wait' },
+      inputs: { SOUND_MENU: 'NAME' },
+      shadows: { SOUND_MENU: { type: 'sound_sounds_menu', field: 'SOUND_MENU' } }
+    },
+    { s: 'sound_stopallsounds', e: 'core.sound.stop_all' },
+
+    // ---- 克隆 ----
+    { s: 'control_start_as_clone', e: 'core.event.when_clone_start', nextFrom: 'BODY' },
+    {
+      s: 'control_create_clone_of', e: 'core.control.create_clone',
+      inputs: { CLONE_OPTION: 'TARGET' },
+      shadows: { CLONE_OPTION: { type: 'control_create_clone_of_menu', field: 'CLONE_OPTION' } }
+    },
+    { s: 'control_delete_this_clone', e: 'core.control.delete_clone' },
 
     // ---- 侦测 ----
     { s: 'sensing_keypressed', e: 'core.sensing.key_pressed', fields: { KEY_OPTION: 'KEY' } },
@@ -218,6 +246,15 @@
         return b.getFieldValue('BOOL') === 'TRUE';
       case 'text':
         return b.getFieldValue('TEXT');
+      // Scratch 的"下拉菜单"也是影子积木，值在字段里
+      case 'looks_costume':
+        return b.getFieldValue('COSTUME');
+      case 'sound_sounds_menu':
+        return b.getFieldValue('SOUND_MENU');
+      case 'control_create_clone_of_menu': {
+        var v = b.getFieldValue('CLONE_OPTION');
+        return v === '_myself_' ? '@self' : v;
+      }
       default:
         return null;
     }
@@ -301,11 +338,24 @@
     }
 
     var ins = entry.inputs || {};
+    var shadows = entry.shadows || {};
     for (var si in ins) {
       var b2 = inputs[ins[si]];
       if (!b2 || !('value' in b2)) continue;
       x += '<value name="' + si + '">';
-      x += isBlock(b2.value) ? blockToXml(b2.value) : shadowFor(b2.value);
+      if (isBlock(b2.value)) {
+        x += blockToXml(b2.value);
+      } else if (shadows[si]) {
+        // 造型/声音/克隆对象这类下拉菜单，要用 Scratch 自己的菜单影子块
+        var shadowValue = b2.value;
+        if (shadows[si].type === 'control_create_clone_of_menu' && shadowValue === '@self') {
+          shadowValue = '_myself_'; // Scratch 里显示为「自己」
+        }
+        x += '<shadow type="' + shadows[si].type + '"><field name="' + shadows[si].field + '">' +
+          escapeXml(shadowValue) + '</field></shadow>';
+      } else {
+        x += shadowFor(b2.value);
+      }
       x += '</value>';
     }
 
@@ -350,12 +400,41 @@
   // 引擎调用的入口
   window.eeLoadProgram = function (program) {
     if (!workspace) return;
+    // 关键：必须等字体就绪再建积木。
+    // 否则 Blockly 用备用字体的窄宽度算中文，clip 路径会短一截，
+    // 积木右边就被裁掉了（看起来像"少了半个积木"）。
+    var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    fonts.then(function () {
+      loadNow(program);
+    });
+  };
+
+  function loadNow(program) {
     suppress = true;
     try {
       workspace.clear();
       var xml = programToXml(program);
       Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);
-      workspace.cleanUp();
+
+      // 再强制排一次版：字体/缩放变化后 clip 路径需要重建
+      if (Blockly.svgResize) {
+        Blockly.svgResize(workspace);
+      }
+      workspace.getAllBlocks(false).forEach(function (b) {
+        if (b.render) b.render();
+      });
+
+      // 容器尺寸在网页刚显示时可能还没定下来，画出来的路径会短一截。
+      // 等一两帧再重排一次（Blockly 这类"积木被切掉"的经典解法）。
+      [120, 400].forEach(function (ms) {
+        setTimeout(function () {
+          if (!workspace) return;
+          if (Blockly.svgResize) Blockly.svgResize(workspace);
+          workspace.getAllBlocks(false).forEach(function (b) {
+            if (b.renderDraw_) b.renderDraw_(); else if (b.render) b.render();
+          });
+        }, ms);
+      });
 
       // 往返校验：把"网页理解的程序"再发回引擎一次。
       // 如果两边对不上（比如某个积木在网页里画不出来），引擎那边会立刻发现。
@@ -374,7 +453,7 @@
     } finally {
       suppress = false;
     }
-  };
+  }
 
   window.eeSetReadOnly = function (flag) {
     if (workspace) workspace.options.readOnly = !!flag;

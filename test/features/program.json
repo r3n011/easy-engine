@@ -1,0 +1,51 @@
+[
+  {
+    "top": {
+      "block": "core.event.when_flag_clicked",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.motion.change_y",
+            "inputs": { "DY": { "value": 10 } },
+            "next": {
+              "block": "core.sound.play",
+              "inputs": {
+                "NAME": { "value": "" },
+                "MODE": { "value": "wait" }
+              },
+              "next": {
+                "block": "core.looks.set_costume",
+                "inputs": { "MODE": { "value": "next" } },
+                "next": {
+                  "block": "core.control.repeat",
+                  "inputs": {
+                    "TIMES": { "value": 2 },
+                    "BODY": {
+                      "stack": {
+                        "block": "core.control.create_clone",
+                        "inputs": { "TARGET": { "value": "@self" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "top": {
+      "block": "core.event.when_clone_start",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.motion.change_x",
+            "inputs": { "DX": { "value": 100 } }
+          }
+        }
+      }
+    }
+  }
+]
