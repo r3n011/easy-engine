@@ -1,0 +1,27 @@
+[
+  {
+    "top": {
+      "block": "core.event.when_flag_clicked",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.control.repeat",
+            "inputs": {
+              "TIMES": { "value": 10 },
+              "BODY": {
+                "stack": {
+                  "block": "core.motion.change_x",
+                  "inputs": { "DX": { "value": 5 } },
+                  "next": {
+                    "block": "core.motion.change_y",
+                    "inputs": { "DY": { "value": 3 } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+]

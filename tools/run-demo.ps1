@@ -12,7 +12,9 @@ param(
     # 截图前把鼠标移到窗口内某点，用来演示跟随鼠标的玩法
     [string]$MoveMouse = "",
     [switch]$Diag,
-    [string]$Scene = ""
+    [string]$Scene = "",
+    # 传了就按"打开编辑器"的方式启动（用于验证编辑器里的界面）
+    [string]$EditorPath = ""
 ,
     [string[]]$ExtraFlags = @()
 )
@@ -43,7 +45,7 @@ Start-Sleep -Milliseconds 500
 
 Write-Host "启动播放器：$Project" -ForegroundColor Cyan
 $sceneArg = if ($Scene) { "$Scene -- $Project" } else { "-- $Project" }
-$argLine = "--path `"$runtime`" --rendering-driver opengl3 $sceneArg"
+if ($EditorPath) { $argLine = "--path `"$EditorPath`" -e --rendering-driver opengl3" } else { $argLine = "--path `"$runtime`" --rendering-driver opengl3 $sceneArg" }
 $proc = Start-Process -FilePath $Godot -ArgumentList $argLine -PassThru `
     -RedirectStandardOutput $log -RedirectStandardError "$log.err"
 

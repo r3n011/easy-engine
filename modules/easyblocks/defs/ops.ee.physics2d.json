@@ -1,0 +1,17 @@
+{
+  "extension": "ee.physics2d",
+  "extensionVersion": 1,
+  "provider": "res://ee/providers/physics2d_ops.gd",
+  "requires": [{"id": "ee.core", "version": ">=1"}],
+  "description": "物理 2D 扩展的 op 定义。运行时只认 op，不认积木——所以扩展可以自由设计积木的外观。",
+  "ops": [
+    {"id": "vec2", "yields": false, "pure": true, "args": ["x", "y"], "note": "构造向量的表达式 op"},
+    {"id": "phy2d.apply_impulse", "yields": false, "pure": false, "args": ["target", "impulse"]},
+    {"id": "phy2d.set_velocity", "yields": false, "pure": false, "args": ["target", "velocity"]},
+    {"id": "phy2d.set_gravity_scale", "yields": false, "pure": false, "args": ["target", "scale"]},
+    {"id": "phy2d.get_velocity_x", "yields": false, "pure": true, "args": ["target"]},
+    {"id": "phy2d.get_velocity_y", "yields": false, "pure": true, "args": ["target"]},
+    {"id": "phy2d.is_on_floor", "yields": false, "pure": true, "args": ["target"]},
+    {"id": "phy2d.raycast_hit", "yields": false, "pure": true, "args": ["target", "direction", "distance"]}
+  ]
+}

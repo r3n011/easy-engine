@@ -44,3 +44,6 @@ desktop.ini
 # Godot 打开工程时给素材生成的导入文件（本项目通过 Image.load 直接读，
 # 不依赖导入流程；这些文件由编辑器随时重建）
 *.import
+# 模块构建时生成的定义头（由 tools/gen_defs.py 产生）
+modules/easyblocks/block_defs.gen.h
+modules/easyblocks/**/__pycache__/
