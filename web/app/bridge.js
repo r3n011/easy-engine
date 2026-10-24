@@ -617,6 +617,117 @@
 
   window.eeAttach = function (pWorkspace) {
     workspace = pWorkspace;
+
+    // ---- 分类回调：变量 / 列表 / 自制积木 ----
+    // 工具箱里这两个分类是 custom="VARIABLE" / custom="PROCEDURE"，
+    // 不注册回调的话点开是空的 —— 用户也就没法新建变量/列表/积木。
+    function xmlNodes(text) {
+      var doc = Blockly.Xml.textToDom('<xml>' + text + '</xml>');
+      var out = [];
+      for (var n = doc.firstChild; n; n = n.nextSibling) {
+        out.push(n);
+      }
+      return out;
+    }
+
+    // 这个版本的 scratch-blocks 没有 Blockly.Variables.flyoutCategory，
+    // 所以变量/列表分类自己生成。
+    function variableFlyout() {
+      var xml = '<button text="新建变量" callbackkey="CREATE_VARIABLE"></button>' +
+        '<button text="新建列表" callbackkey="CREATE_LIST"></button>';
+
+      var all = workspace.getAllVariables ? workspace.getAllVariables() : [];
+      var lists = [];
+
+      all.forEach(function (v) {
+        if ((v.type || '') === '') {
+          xml += '<block type="data_variable"><field name="VARIABLE" id="' + v.getId() +
+            '" variabletype="">' + escapeXml(v.name) + '</field></block>';
+        } else if (v.type === 'list') {
+          lists.push(v);
+        }
+      });
+
+      lists.forEach(function (l) {
+        var lf = '<field name="LIST" id="' + l.getId() + '" variabletype="list">' +
+          escapeXml(l.name) + '</field>';
+        var num = '<shadow type="math_whole_number"><field name="NUM">1</field></shadow>';
+        var txt = '<shadow type="text"><field name="TEXT"></field></shadow>';
+
+        xml += '<block type="data_addtolist">' + lf + '<value name="ITEM">' + txt + '</value></block>';
+        xml += '<block type="data_deleteoflist">' + lf + '<value name="INDEX">' + num + '</value></block>';
+        xml += '<block type="data_deletealloflist">' + lf + '</block>';
+        xml += '<block type="data_insertatlist">' + lf +
+          '<value name="INDEX">' + num + '</value><value name="ITEM">' + txt + '</value></block>';
+        xml += '<block type="data_replaceitemoflist">' + lf +
+          '<value name="INDEX">' + num + '</value><value name="ITEM">' + txt + '</value></block>';
+        xml += '<block type="data_itemoflist">' + lf + '<value name="INDEX">' + num + '</value></block>';
+        xml += '<block type="data_lengthoflist">' + lf + '</block>';
+        xml += '<block type="data_itemnumoflist">' + lf + '<value name="ITEM">' + txt + '</value></block>';
+        xml += '<block type="data_listcontainsitem">' + lf + '<value name="ITEM">' + txt + '</value></block>';
+        xml += '<block type="data_showlist">' + lf + '</block>';
+        xml += '<block type="data_hidelist">' + lf + '</block>';
+      });
+
+      return xmlNodes(xml);
+    }
+
+    try {
+      workspace.registerToolboxCategoryCallback('VARIABLE', variableFlyout);
+      if (Blockly.Procedures && Blockly.Procedures.flyoutCategory) {
+        workspace.registerToolboxCategoryCallback('PROCEDURE', Blockly.Procedures.flyoutCategory);
+      }
+    } catch (e) {
+      post({ type: 'debug', text: '注册分类回调失败：' + e });
+    }
+
+    // ---- 新建变量 / 新建列表 ----
+    function refreshFlyout() {
+      if (workspace.refreshToolboxSelection_) {
+        workspace.refreshToolboxSelection_();
+      }
+    }
+    function makeVariable(title, label, defName, type) {
+      if (!window.eeDialogs) return;
+      eeDialogs.prompt(title, label, defName, function (name) {
+        if (!name) return;
+        if (!workspace.getVariable(name)) {
+          workspace.createVariable(name, type);
+        }
+        refreshFlyout();
+      });
+    }
+    try {
+      workspace.registerButtonCallback('CREATE_VARIABLE', function () {
+        makeVariable('新建变量', '变量名字', '变量1', '');
+      });
+      workspace.registerButtonCallback('CREATE_LIST', function () {
+        makeVariable('新建列表', '列表名字', '列表1', 'list');
+      });
+    } catch (e) {
+      post({ type: 'debug', text: '注册按钮回调失败：' + e });
+    }
+
+    // ---- 制作新的积木 ----
+    if (Blockly.Procedures) {
+      Blockly.Procedures.externalProcedureDefCallback = function (initialMutation, callback) {
+        if (!window.eeDialogs) { callback(null); return; }
+        var initialCode = initialMutation ? (initialMutation.getAttribute('proccode') || '') : '';
+        eeDialogs.procedure(initialCode, function (result) {
+          if (!result) { callback(null); return; }
+          // 组一个 <mutation> 交给 scratch-blocks，它自己会建定义积木
+          var xml = '<xml><mutation proccode="' + escapeXml(result.proccode) +
+            '" argumentids="' + escapeXml(JSON.stringify(result.argumentids)) +
+            '" argumentnames="' + escapeXml(JSON.stringify(result.argumentnames)) +
+            '" argumentdefaults="' + escapeXml(JSON.stringify(result.argumentdefaults)) +
+            '" warp="' + (result.warp ? 'true' : 'false') + '"></mutation></xml>';
+          var doc = Blockly.Xml.textToDom(xml);
+          callback(doc.firstChild);
+          refreshFlyout();
+        });
+      };
+    }
+
     var timer = null;
     workspace.addChangeListener(function (ev) {
       if (suppress) return;

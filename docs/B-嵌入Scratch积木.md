@@ -348,5 +348,40 @@ Scratch 把自制积木的元数据塞在 `<mutation>` 属性里：
 
 这块要做 Scratch 那个弹窗（输入名字、加参数、选"运行时不刷新屏幕"），是纯前端工作。
 
+---
+
+## 新建入口：变量 / 列表 / 自制积木（已补）
+
+之前这三个分类点开都是**空的** —— 工具箱里它们是 `custom="VARIABLE"` / `custom="PROCEDURE"`
+动态分类，不给注册回调就什么都不显示，用户也就没法新建任何东西。
+
+现在补上了：
+
+| 入口 | 做法 |
+|---|---|
+| 新建变量 | 分类里的按钮 → 我们自己的输入框 → `workspace.createVariable(name, '')` |
+| 新建列表 | 同上，类型传 `'list'` |
+| 制作新的积木 | 接 `Blockly.Procedures.externalProcedureDefCallback`：弹窗填名字、加文本/布尔参数、勾"运行时不刷新屏幕"，然后交一个 `<mutation>` 回去，scratch-blocks 自己建定义积木 |
+
+变量/列表的分类内容要**自己生成**（这个版本的 scratch-blocks 没有
+`Blockly.Variables.flyoutCategory`），用一个 `xmlNodes()` 辅助函数把 XML 字符串转成
+Blockly 要的 DOM 节点数组。自制积木的分类回调 `Blockly.Procedures.flyoutCategory` 是现成的，
+它还会顺手注册 `CREATE_PROCEDURE` 按钮回调。
+
+验证（浏览器探针，走的是和用户完全相同的路径）：
+
+```
+getButtonCallback('CREATE_VARIABLE') → function
+点按钮 → 对话框标题=新建变量 → 填"速度" → 确定
+建完后的变量 = ["速度"]
+```
+
+自制积木那条路径同样验过：点「制作新的积木」→ 填名字"跳"、加一个文本参数 → 确定
+→ 工作区出现 `procedures_definition`，`proccode = 跳 %s`，参数名 = 参数1。
+
+对话框是自己写的（`web/app/dialogs.js`），没用 `window.prompt` ——
+因为"制作新的积木"需要多参数编辑，prompt 做不了，而且样式也跟编辑器不搭。
+
+
 
 
