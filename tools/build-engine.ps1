@@ -1,4 +1,4 @@
-﻿# 同步模块源码并编译 Godot。
+﻿# 同步模块源码、准备内嵌网页资源、编译 Godot。
 #
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File tools\build-engine.ps1
@@ -22,8 +22,16 @@ if (-not (Test-Path $engine)) {
     Write-Error "找不到 engine\godot，请先拉取 Godot 源码（见 docs/A-模块骨架.md）"
 }
 
+# 1. WebView2 SDK（积木工作区靠它把网页显示在编辑器里）
+$wv2 = Join-Path $root "modules\easyblocks\thirdparty\webview2\include\WebView2.h"
+if (-not (Test-Path $wv2)) {
+    & (Join-Path $PSScriptRoot "fetch-webview2.ps1")
+}
+
+# 2. 模块源码 → 引擎树
 & (Join-Path $PSScriptRoot "sync-module.ps1")
 
+# 3. 编译
 Push-Location $engine
 try {
     python -m SCons platform=windows target=editor arch=x86_64 accesskit=no d3d12=no "-j$Jobs"
@@ -34,5 +42,22 @@ try {
     Pop-Location
 }
 
+# 4. 积木工作区网页 → 可执行文件旁边（编辑器运行时从这里加载）
+$webSrc = Join-Path $root "web\app"
+$webDst = Join-Path $engine "bin\easyblocks_web"
+if (Test-Path $webSrc) {
+    robocopy $webSrc $webDst /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) {
+        Write-Error "复制积木工作区网页失败（robocopy 退出码 $LASTEXITCODE）"
+    }
+}
+
 Write-Host ""
 Write-Host "编译完成：engine\godot\bin\godot.windows.editor.x86_64.exe"
+Write-Host "积木工作区：engine\godot\bin\easyblocks_web"
+
+# 5. WebView2 加载器 → 可执行文件旁边（积木工作区运行时动态加载它）
+$loader = Join-Path $root "modules\easyblocks\thirdparty\webview2\x64\WebView2Loader.dll"
+if (Test-Path $loader) {
+    Copy-Item $loader (Join-Path $engine "bin\WebView2Loader.dll") -Force
+}

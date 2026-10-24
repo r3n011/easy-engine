@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Easy Engine · 积木（外观验证）</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #E9EEF2; }
+  #blocklyDiv { position: absolute; inset: 0; }
+  /* Scratch 调试时右上角会有缩放控件，这里保留 */
+</style>
+</head>
+<body>
+<div id="blocklyDiv"></div>
+
+<script src="vendor/scratch-blocks/scratch-blocks.js"></script>
+<script src="vendor/scratch-blocks/scratch_msgs.js"></script>
+<script src="vendor/scratch-blocks/default_toolbox.js"></script>
+<script>
+  // ---- 中文 ----
+  // scratch-blocks 1.x 没有 setLocale，语言由 ScratchMsgs.locale 决定，
+  // 积木在 init 时从 Blockly.Msg 取文案。
+  if (window.Blockly && Blockly.ScratchMsgs) {
+    // 必须在 inject 之前调用：积木是在 inject 时创建并把文案定下来的
+    Blockly.ScratchMsgs.setLocale('zh-cn');
+  }
+
+  var toolboxXml = (Blockly.Blocks && Blockly.Blocks.defaultToolbox) ? Blockly.Blocks.defaultToolbox : null;
+
+  var workspace = Blockly.inject('blocklyDiv', {
+    media: 'vendor/scratch-blocks/media/',
+    toolbox: toolboxXml,
+    zoom: { controls: true, wheel: true, startScale: 0.75, maxScale: 2, minScale: 0.4, scaleSpeed: 1.1 },
+    colours: {
+      workspace: '#F9F9F9',
+      toolbox: '#FFFFFF',
+      toolboxes: '#FFFFFF',
+      flyout: '#F9F9F9',
+      scrollbar: '#CECDCE',
+      scrollbarHover: '#CECDCE',
+      text: '#575E75',
+      textField: '#FFFFFF',
+      insertionMarker: '#000000',
+      insertionMarkerOpacity: 0.15,
+      workspaceBlocks: '#FFFFFF'
+    },
+    grid: { spacing: 40, length: 3, colour: '#E6EBF0', snap: true },
+    scrollbars: true,
+    sounds: false
+  });
+
+  // 放一段示例程序，用来判断积木形状/配色/字重对不对
+  var demo = `
+<xml xmlns="http://www.w3.org/1999/xhtml">
+  <block type="event_whenflagclicked" x="40" y="40">
+    <next>
+      <block type="control_repeat">
+        <value name="TIMES">
+          <shadow type="math_whole_number"><field name="NUM">10</field></shadow>
+        </value>
+        <statement name="SUBSTACK">
+          <block type="motion_movesteps">
+            <value name="STEPS"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
+            <next>
+              <block type="motion_turnright">
+                <value name="DEGREE"><shadow type="math_number"><field name="NUM">15</field></shadow></value>
+                <next>
+                  <block type="looks_sayforsecs">
+                    <value name="MESSAGE"><shadow type="text"><field name="TEXT">你好！</field></shadow></value>
+                    <value name="SECS"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </statement>
+      </block>
+    </next>
+  </block>
+
+  <block type="control_if" x="40" y="260">
+    <value name="CONDITION">
+      <shadow type="logic_boolean"><field name="BOOL">TRUE</field></shadow>
+    </value>
+    <statement name="SUBSTACK">
+      <block type="looks_changeeffectby">
+        <value name="CHANGE"><shadow type="math_number"><field name="NUM">25</field></shadow></value>
+        <field name="EFFECT">COLOR</field>
+      </block>
+    </statement>
+  </block>
+
+  <block type="operator_add" x="430" y="40">
+    <value name="NUM1"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+    <value name="NUM2"><shadow type="math_number"><field name="NUM">2</field></shadow></value>
+  </block>
+
+  <block type="operator_lt" x="430" y="120">
+    <value name="OPERAND1"><shadow type="text"><field name="TEXT">苹果</field></shadow></value>
+    <value name="OPERAND2"><shadow type="text"><field name="TEXT">香蕉</field></shadow></value>
+  </block>
+
+  <block type="data_setvariableto" x="430" y="200">
+    <field name="VARIABLE">得分</field>
+    <value name="VALUE"><shadow type="text"><field name="TEXT">0</field></shadow></value>
+  </block>
+</xml>`;
+
+  try {
+    Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(demo), workspace);
+  } catch (e) {
+    console.error('示例程序导入失败：', e);
+  }
+
+  // 让页面知道渲染完了（后面接 Godot 时用这个握手）
+  window.requestAnimationFrame(function () {
+    window.requestAnimationFrame(function () {
+      window.__eeReady = true;
+      document.title = 'READY ' + Object.keys(Blockly.Blocks || {}).length + ' 种积木';
+    });
+  });
+</script>
+</body>
+</html>

@@ -23,3 +23,13 @@ env_easyblocks.add_source_files(env.modules_sources, "*.cpp")
 # 编辑器侧（只在 editor 构建里编）
 if env.editor_build:
     env_easyblocks.add_source_files(env.modules_sources, "editor/*.cpp")
+
+    # 内嵌 WebView2（Windows 自带 Edge 内核）——积木工作区靠它显示网页。
+    # 只用到头文件；运行时的 WebView2Loader.dll 由编译脚本复制到 exe 旁边，
+    # 代码里动态加载，所以不需要往链接参数里塞 .lib（那样路径会被 SCons 改写）。
+    if env["platform"] == "windows":
+        wv2 = os.path.join(_here, "thirdparty", "webview2")
+        if os.path.isdir(os.path.join(wv2, "include")):
+            env_easyblocks.Prepend(CPPPATH=[os.path.join(wv2, "include")])
+        else:
+            print("easyblocks: 没找到 thirdparty/webview2（先跑 tools/fetch-webview2.ps1），积木工作区将不可用")

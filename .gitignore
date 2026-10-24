@@ -47,3 +47,11 @@ desktop.ini
 # 模块构建时生成的定义头（由 tools/gen_defs.py 产生）
 modules/easyblocks/block_defs.gen.h
 modules/easyblocks/**/__pycache__/
+
+# WebView2 SDK（tools/fetch-webview2.ps1 拉取）
+modules/easyblocks/thirdparty/
+# npm 解包目录
+web/package/
+web/v13/
+web/old/
+web/*.tgz
