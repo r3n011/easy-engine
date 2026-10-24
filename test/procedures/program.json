@@ -1,0 +1,64 @@
+[
+  {
+    "top": {
+      "block": "core.procedure.define",
+      "proccode": "倒数 %s",
+      "params": ["数"],
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.control.if",
+            "inputs": {
+              "COND": {
+                "value": {
+                  "block": "core.operator.gt",
+                  "inputs": {
+                    "A": { "value": { "block": "core.procedure.arg", "name": "数" } },
+                    "B": { "value": 0 }
+                  }
+                }
+              },
+              "BODY": {
+                "stack": {
+                  "block": "core.motion.change_y",
+                  "inputs": {
+                    "DY": { "value": { "block": "core.procedure.arg", "name": "数" } }
+                  },
+                  "next": {
+                    "block": "core.procedure.call",
+                    "proccode": "倒数 %s",
+                    "inputs": {
+                      "ARG0": {
+                        "value": {
+                          "block": "core.operator.sub",
+                          "inputs": {
+                            "A": { "value": { "block": "core.procedure.arg", "name": "数" } },
+                            "B": { "value": 1 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "top": {
+      "block": "core.event.when_flag_clicked",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.procedure.call",
+            "proccode": "倒数 %s",
+            "inputs": { "ARG0": { "value": 3 } }
+          }
+        }
+      }
+    }
+  }
+]

@@ -117,6 +117,44 @@ Dictionary BlockProgram::_compile_block(const Dictionary &p_block, int p_depth) 
 	}
 
 	BlockLibrary *lib = BlockLibrary::get_singleton();
+
+	// 自制积木：id 是用户造的，没有静态定义，编译器特判。
+	// 格式：
+	//   define: { block, proccode, params:[名字...], inputs:{ BODY:{stack} } }
+	//   call:   { block, proccode, inputs:{ ARG0:{value}, ARG1:{value}, ... } }
+	//   arg:    { block, name }
+	if (id == "core.procedure.define") {
+		Dictionary inputs = p_block.get("inputs", Dictionary());
+		Dictionary op;
+		op["op"] = "procedures.define";
+		op["proccode"] = p_block.get("proccode", String());
+		op["params"] = p_block.get("params", Array());
+		op["body"] = _resolve_branch("BODY", inputs, p_depth);
+		return op;
+	}
+	if (id == "core.procedure.call") {
+		Dictionary inputs = p_block.get("inputs", Dictionary());
+		Array args;
+		for (int i = 0; i < 32; i++) {
+			const String key = "ARG" + itos(i);
+			if (!inputs.has(key)) {
+				break;
+			}
+			args.push_back(_resolve_value(key, Dictionary(), inputs, p_depth));
+		}
+		Dictionary op;
+		op["op"] = "procedures.call";
+		op["proccode"] = p_block.get("proccode", String());
+		op["args"] = args;
+		return op;
+	}
+	if (id == "core.procedure.arg") {
+		Dictionary op;
+		op["op"] = "procedures.arg";
+		op["name"] = p_block.get("name", String());
+		return op;
+	}
+
 	if (!lib->has_block(id)) {
 		_error(String::utf8("未知积木：") + id, id);
 		return Dictionary();

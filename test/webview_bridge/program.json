@@ -1,80 +1,39 @@
 [
   {
     "top": {
-      "block": "core.event.when_flag_clicked",
+      "block": "core.procedure.define",
+      "proccode": "倒数 %s",
+      "params": ["数"],
       "inputs": {
         "BODY": {
           "stack": {
-            "block": "core.data.list_clear",
-            "inputs": { "NAME": { "value": "清单" } },
-            "next": {
-              "block": "core.data.list_add",
-              "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "苹果" } },
-              "next": {
-                "block": "core.data.list_add",
-                "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "香蕉" } },
-                "next": {
-                  "block": "core.data.list_insert",
+            "block": "core.control.if",
+            "inputs": {
+              "COND": {
+                "value": {
+                  "block": "core.operator.gt",
                   "inputs": {
-                    "NAME": { "value": "清单" },
-                    "INDEX": { "value": 2 },
-                    "VALUE": { "value": "橙子" }
+                    "A": { "value": { "block": "core.procedure.arg", "name": "数" } },
+                    "B": { "value": 0 }
+                  }
+                }
+              },
+              "BODY": {
+                "stack": {
+                  "block": "core.motion.change_y",
+                  "inputs": {
+                    "DY": { "value": { "block": "core.procedure.arg", "name": "数" } }
                   },
                   "next": {
-                    "block": "core.data.list_replace",
+                    "block": "core.procedure.call",
+                    "proccode": "倒数 %s",
                     "inputs": {
-                      "NAME": { "value": "清单" },
-                      "INDEX": { "value": 1 },
-                      "VALUE": { "value": "苹果2" }
-                    },
-                    "next": {
-                      "block": "core.data.set_var",
-                      "inputs": {
-                        "NAME": { "value": "项目数" },
-                        "VALUE": {
-                          "value": {
-                            "block": "core.data.list_length",
-                            "inputs": { "NAME": { "value": "清单" } }
-                          }
-                        }
-                      },
-                      "next": {
-                        "block": "core.data.set_var",
-                        "inputs": {
-                          "NAME": { "value": "位置" },
-                          "VALUE": {
-                            "value": {
-                              "block": "core.data.list_index_of",
-                              "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "香蕉" } }
-                            }
-                          }
-                        },
-                        "next": {
-                          "block": "core.data.set_var",
+                      "ARG0": {
+                        "value": {
+                          "block": "core.operator.sub",
                           "inputs": {
-                            "NAME": { "value": "存在" },
-                            "VALUE": {
-                              "value": {
-                                "block": "core.data.list_contains",
-                                "inputs": { "NAME": { "value": "清单" }, "VALUE": { "value": "橙子" } }
-                              }
-                            }
-                          },
-                          "next": {
-                            "block": "core.data.set_var",
-                            "inputs": {
-                              "NAME": { "value": "第二项" },
-                              "VALUE": {
-                                "value": {
-                                  "block": "core.data.list_item",
-                                  "inputs": { "NAME": { "value": "清单" }, "INDEX": { "value": 2 } }
-                                }
-                              }
-                            },
-                            "next": {
-                              "block": "core.data.list_delete",
-                              "inputs": { "NAME": { "value": "清单" }, "INDEX": { "value": 3 } }
-                            }
+                            "A": { "value": { "block": "core.procedure.arg", "name": "数" } },
+                            "B": { "value": 1 }
                           }
                         }
                       }
@@ -83,6 +42,20 @@
                 }
               }
             }
+          }
+        }
+      }
+    }
+  },
+  {
+    "top": {
+      "block": "core.event.when_flag_clicked",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.procedure.call",
+            "proccode": "倒数 %s",
+            "inputs": { "ARG0": { "value": 3 } }
           }
         }
       }

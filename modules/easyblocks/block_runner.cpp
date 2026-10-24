@@ -171,6 +171,7 @@ Error BlockRunner::_start_impl(bool p_clone_only) {
 		frame_count = 0;
 		globals.clear();
 		global_lists.clear();
+		procedures.clear();
 	}
 
 	// 程序来源：显式资源优先，其次从 JSON 文件读
@@ -215,6 +216,13 @@ Error BlockRunner::_start_impl(bool p_clone_only) {
 	int started_count = 0;
 	for (int i = 0; i < ir.size(); i++) {
 		Dictionary hat = ir[i];
+
+		// 自制积木的定义先收集起来（不启动线程）
+		if (String(hat.get("op", String())) == "procedures.define") {
+			procedures[String(hat.get("proccode", String()))] = hat;
+			continue;
+		}
+
 		if (String(hat.get("op", String())) != "event.hat") {
 			_warn(String::utf8("脚本的第 1 个积木不是帽子积木，忽略"));
 			continue;
@@ -407,6 +415,13 @@ void BlockRunner::_close_iteration(RunnerThread *t) {
 				t->warp_depth--;
 			}
 			break;
+		case LOOP_PROC:
+			// 自制积木跑完：弹掉这次调用的局部作用域
+			t->frames.remove_at(t->frames.size() - 1);
+			if (!t->scopes.is_empty()) {
+				t->scopes.remove_at(t->scopes.size() - 1);
+			}
+			break;
 	}
 }
 
@@ -450,6 +465,14 @@ void BlockRunner::_push_warp(RunnerThread *t, const Array &p_ops) {
 	Frame f;
 	f.ops = p_ops;
 	f.loop = LOOP_WARP;
+	t->frames.push_back(f);
+}
+
+void BlockRunner::_push_proc(RunnerThread *t, const Array &p_body) {
+	// 即使函数体是空的也要压帧：帧关闭时才会弹掉这次调用的作用域
+	Frame f;
+	f.ops = p_body;
+	f.loop = LOOP_PROC;
 	t->frames.push_back(f);
 }
 
@@ -912,6 +935,36 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 			_warn(String::utf8("「删除此克隆体」只在克隆体里生效"));
 		}
 		return Variant();
+	}
+
+	// ---- 自制积木 ----
+	if (op_id == "procedures.call") {
+		const String code = str("proccode");
+		Dictionary *def = procedures.getptr(code);
+		if (def == nullptr) {
+			_warn(String::utf8("找不到自制积木的定义：") + code);
+			return Variant();
+		}
+		const Array params = def->get("params", Array());
+		const Array args = p_op.get("args", Array());
+
+		// 参数必须在"调用者的作用域"里求值，再压新作用域
+		Dictionary scope;
+		for (int i = 0; i < params.size(); i++) {
+			scope[String(params[i])] = (i < args.size()) ? _eval(t, args[i]) : Variant();
+		}
+		t->scopes.push_back(scope);
+		_push_proc(t, def->get("body", Array()));
+		return Variant();
+	}
+	if (op_id == "procedures.arg") {
+		const String name = str("name");
+		for (int i = t->scopes.size() - 1; i >= 0; i--) {
+			if (t->scopes[i].has(name)) {
+				return t->scopes[i][name];
+			}
+		}
+		return Variant(0);
 	}
 
 	// ---- 变量 ----

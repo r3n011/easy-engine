@@ -274,5 +274,79 @@ Scratch 的 11 个列表积木全部接通：清空、加入、删除（含"全�
    `field.getText()`，否则引擎侧收到的变量名是一串 `@V,O8mM9...` 这样的乱码，
    而且每加载一次都不一样，存进 `.tscn` 就彻底对不上了。
 
+---
+
+## 自制积木（运行 + 编译）
+
+这是唯一需要**动编译器**的部分：用户造的积木没有静态定义，编译器得认。
+
+### 程序格式（向后兼容，不升版本）
+
+```json
+{ "block": "core.procedure.define", "proccode": "倒数 %s", "params": ["数"],
+  "inputs": { "BODY": { "stack": { ... } } } }
+
+{ "block": "core.procedure.call", "proccode": "倒数 %s",
+  "inputs": { "ARG0": { "value": 3 } } }
+
+{ "block": "core.procedure.arg", "name": "数" }
+```
+
+调用参数固定用 `ARG0`、`ARG1`…（按位置），这样和 Scratch 的 `argumentids` 顺序一一对应。
+
+### 编译器
+
+`BlockProgram::compile()` 里对 `core.procedure.*` 特判，不走"查定义表"那条路：
+
+- `define` → IR `procedures.define { proccode, params, body }`
+- `call` → IR `procedures.call { proccode, args[] }`（参数按 ARG0.. 顺序编译）
+- `arg` → IR `procedures.arg { name }`
+
+### 运行时
+
+- 启动时先把所有 `procedures.define` 收进 `procedures` 表（不启动线程）
+- 调用时**在调用者作用域里**求值参数，然后压一层新作用域，再压函数体帧
+- 帧关闭时弹掉作用域（新加了帧类型 `LOOP_PROC`）
+- `procedures.arg` 从最内层作用域往外找
+
+作用域用 `Vector<Dictionary>` 而不是 `Vector<HashMap>` —— 4.7 的 `HashMap` 不可拷贝，
+塞不进 `Vector`。
+
+### 验证：递归
+
+`test/procedures/` 里的程序：
+
+```
+定义 倒数 (数)
+  如果 (数) > 0 那么
+    将y坐标增加 (数)
+    倒数 ((数) - 1)
+
+当绿旗被点击 → 倒数 3
+```
+
+无渲染跑出来 **y = 6**（3+2+1），无警告无错误。这条同时证明了：
+参数作用域正确、递归正确、参数在调用者作用域求值正确。
+
+### 网页端：Scratch 的 mutation
+
+Scratch 把自制积木的元数据塞在 `<mutation>` 属性里：
+
+```xml
+<mutation proccode="倒数 %s" argumentids="[&quot;arg0&quot;]"
+          argumentnames="[&quot;数&quot;]" argumentdefaults="[&quot;&quot;]" warp="false"/>
+```
+
+读写两边都要处理，而且参数名必须原样带过去（中文参数名、`%s`/`%b` 占位符都不能动）。
+参数报告积木是 `argument_reporter_string_number`，值在 `VALUE` 字段里。
+
+### 还没做的（要说清楚）
+
+**「制作新的积木」按钮和参数编辑弹窗还没做。** 也就是说：
+- 已经有自制积木的程序（比如导入的、或者用 JSON 写的）能完整显示、编辑、运行
+- 但用户还**不能**在界面里从零新建一个自制积木
+
+这块要做 Scratch 那个弹窗（输入名字、加参数、选"运行时不刷新屏幕"），是纯前端工作。
+
 
 

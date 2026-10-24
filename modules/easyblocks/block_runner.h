@@ -41,6 +41,7 @@ private:
 		LOOP_FOREVER,
 		LOOP_WHILE,
 		LOOP_WARP,
+		LOOP_PROC,
 	};
 
 	struct Frame {
@@ -58,6 +59,8 @@ private:
 		double resume_at = 0.0;
 		Variant wait_cond;
 		ObjectID wait_audio; // 等音频播完（wait until 的一种特例）
+		// 自制积木的局部作用域：每次调用压一层（参数名 -> 值）
+		Vector<Dictionary> scopes; // 每层：参数名 -> 值
 		int warp_depth = 0;
 		double warp_started = 0.0;
 		String error;
@@ -73,6 +76,7 @@ private:
 	Vector<RunnerThread *> threads;
 	HashMap<String, Variant> globals;
 	HashMap<String, Array> global_lists;
+	HashMap<String, Dictionary> procedures; // proccode -> 定义
 	Vector<ObjectID> clones; // 本运行器造出来的克隆体
 
 	double now = 0.0;
@@ -98,6 +102,7 @@ private:
 	void _push_seq(RunnerThread *t, const Array &p_ops);
 	void _push_loop(RunnerThread *t, int p_kind, const Array &p_ops, int p_count, const Variant &p_cond);
 	void _push_warp(RunnerThread *t, const Array &p_ops);
+	void _push_proc(RunnerThread *t, const Array &p_body);
 
 	Variant _get_var(const String &p_name, const String &p_scope, RunnerThread *t);
 	void _set_var(const String &p_name, const Variant &p_value, const String &p_scope, RunnerThread *t);

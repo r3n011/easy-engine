@@ -180,6 +180,42 @@
   // ---------------------------------------------------------------- 网页 -> 引擎
 
   function blockToEE(b) {
+    // ---- 自制积木（Scratch 用 mutation 存定义）----
+    if (b.type === 'procedures_definition') {
+      var proto = b.getInputTargetBlock('custom_block');
+      var mut = (proto && proto.mutationToDom) ? proto.mutationToDom() : null;
+      var dnode = { block: 'core.procedure.define', inputs: {} };
+      if (mut) {
+        dnode.proccode = mut.getAttribute('proccode') || '';
+        try { dnode.params = JSON.parse(mut.getAttribute('argumentnames') || '[]'); } catch (e) { dnode.params = []; }
+      }
+      var dbody = stackToEE(b.getNextBlock());
+      if (dbody) dnode.inputs.BODY = { stack: dbody };
+      return dnode;
+    }
+    if (b.type === 'procedures_call') {
+      var cmut = b.mutationToDom ? b.mutationToDom() : null;
+      var cnode = { block: 'core.procedure.call', inputs: {} };
+      if (cmut) cnode.proccode = cmut.getAttribute('proccode') || '';
+      var ids = [];
+      try { ids = cmut ? JSON.parse(cmut.getAttribute('argumentids') || '[]') : []; } catch (e) { ids = []; }
+      ids.forEach(function (id, i) {
+        var t = b.getInputTargetBlock(id);
+        if (!t) return;
+        if (isShadow(t)) {
+          var sv = readShadowValue(t);
+          if (sv !== null) cnode.inputs['ARG' + i] = { value: sv };
+        } else {
+          var ch = blockToEE(t);
+          if (ch) cnode.inputs['ARG' + i] = { value: ch };
+        }
+      });
+      return cnode;
+    }
+    if (b.type === 'argument_reporter_string_number' || b.type === 'argument_reporter_boolean') {
+      return { block: 'core.procedure.arg', name: b.getFieldValue('VALUE') || '' };
+    }
+
     var entry = byScratch[b.type];
     if (!entry) {
       lastUnsupported.push(b.type);
@@ -343,7 +379,52 @@
     return list[0];
   }
 
+  function defineToXml(ee) {
+    var params = ee.params || [];
+    var ids = params.map(function (_, i) { return 'arg' + i; });
+    var mutation = '<mutation proccode="' + escapeXml(ee.proccode || '') +
+      '" argumentids="' + escapeXml(JSON.stringify(ids)) +
+      '" argumentnames="' + escapeXml(JSON.stringify(params)) +
+      '" argumentdefaults="' + escapeXml(JSON.stringify(params.map(function () { return ''; }))) +
+      '" warp="false"></mutation>';
+    var proto = '<shadow type="procedures_prototype">' + mutation +
+      ids.map(function (id) {
+        return '<value name="' + id + '"><shadow type="text"><field name="TEXT"></field></shadow></value>';
+      }).join('') + '</shadow>';
+    var stack = ee.inputs && ee.inputs.BODY ? ee.inputs.BODY.stack : null;
+    var body = stack ? ('<next>' + blockToXml(stack) + '</next>') : '';
+    return '<block type="procedures_definition"><statement name="custom_block">' + proto + '</statement>' + body + '</block>';
+  }
+
+  function callToXml(ee) {
+    var inputs = ee.inputs || {};
+    var ids = [];
+    var vals = [];
+    for (var i = 0; i < 32; i++) {
+      var k = 'ARG' + i;
+      if (!(k in inputs)) break;
+      ids.push('arg' + i);
+      vals.push(inputs[k]);
+    }
+    var mutation = '<mutation proccode="' + escapeXml(ee.proccode || '') +
+      '" argumentids="' + escapeXml(JSON.stringify(ids)) + '" warp="false"></mutation>';
+    var body = ids.map(function (id, i) {
+      var box = vals[i];
+      return '<value name="' + id + '">' +
+        (isBlock(box.value) ? blockToXml(box.value) : shadowFor(box.value)) + '</value>';
+    }).join('');
+    return '<block type="procedures_call">' + mutation + body + '</block>';
+  }
+
   function blockToXml(ee) {
+    // ---- 自制积木 ----
+    if (ee.block === 'core.procedure.define') return defineToXml(ee);
+    if (ee.block === 'core.procedure.call') return callToXml(ee);
+    if (ee.block === 'core.procedure.arg') {
+      return '<block type="argument_reporter_string_number"><field name="VALUE">' +
+        escapeXml(ee.name || '') + '</field></block>';
+    }
+
     var entry = pickEntry(ee);
     if (!entry) return '';
     var x = '<block type="' + entry.s + '">';
@@ -478,6 +559,9 @@
       workspace.clear();
       declareVariables(program);
       var xml = programToXml(program);
+      if (window.EE_DEBUG) {
+        post({ type: 'debug', text: 'XML=' + xml });
+      }
       Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);
 
       // 再强制排一次版：字体/缩放变化后 clip 路径需要重建
