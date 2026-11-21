@@ -185,6 +185,38 @@
   // 文案在 modules/easyblocks/defs/tips.zh.json，构建时生成 defs_tips.js。
   var TIPS = (window.EE_TIPS && window.EE_TIPS.blocks) || {};
 
+  // 工具箱左边的分类也要能悬停看解释。
+  // 按分类 id 匹配（scratch-blocks 的 DOM 是 #scratchCategoryId-xxx）。
+  var CATEGORY_TIPS = {
+    'motion': '让角色移动、转向、跳到某个位置',
+    'looks': '说话、换造型、改大小、显示或隐藏',
+    'sound': '播放声音、停止所有声音',
+    'events': '什么时候开始跑：点绿旗、按键、收到消息',
+    'control': '重复、判断、等待、停止',
+    'sensing': '问问题：按了哪个键？鼠标在哪？过了几秒？',
+    'operators': '加减乘除、比较大小、拼接文字',
+    'data': '存会变的值（变量）和一串数据（列表）',
+    'more': '自己定义一个新积木，重复使用（可以做递归）',
+    'ee3d': '把角色变成真正的 3D 物体（Scratch 做不到）',
+    'eephys': '重力、碰撞、冲量 —— 真物理，不是假的',
+    'extensions': '额外扩展积木（暂未全部支持）'
+  };
+
+  function applyCategoryTips() {
+    var items = document.querySelectorAll('.scratchCategoryMenuItem');
+    for (var i = 0; i < items.length; i++) {
+      var el = items[i];
+      // scratch-blocks 把分类 id 放在 class 里：scratchCategoryId-motion
+      var m = (el.className || '').match(/scratchCategoryId-([A-Za-z0-9_]+)/);
+      var key = m ? m[1] : '';
+      var tip = CATEGORY_TIPS[key];
+      if (!tip) continue;
+      if (el.title !== tip) el.title = tip;
+      var label = el.querySelector('.scratchCategoryMenuLabel');
+      if (label && label.title !== tip) label.title = tip;
+    }
+  }
+
   function applyTips() {
     for (var type in byScratch) {
       var entry = byScratch[type];
@@ -837,6 +869,13 @@
       if (ev && ev.workspaceId && ev.workspaceId !== workspace.id) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(pushToEngine, 250);
+    });
+    // 分类是延迟渲染的，过一会儿和点开时各补一次
+    applyCategoryTips();
+    setTimeout(applyCategoryTips, 400);
+    setTimeout(applyCategoryTips, 1500);
+    workspace.addChangeListener(function (ev) {
+      if (ev && ev.type === 'toolbox_item_select') { setTimeout(applyCategoryTips, 60); }
     });
     post({ type: 'bridge_ready' });
   };

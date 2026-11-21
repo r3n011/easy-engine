@@ -11,6 +11,7 @@
 #include "scene/main/node.h"
 
 class BlockProgram;
+class Node3D;
 
 /**
  * 执行一份积木程序。
@@ -77,6 +78,11 @@ private:
 	HashMap<String, Variant> globals;
 	HashMap<String, Array> global_lists;
 	HashMap<String, Dictionary> procedures; // proccode -> 定义
+
+	// 碰到帽子积木：body_entered 信号里要回到对应那一段脚本
+	Array touching_bodies;
+	Array touching_filters;
+	ObjectID touching_connected_to;
 	Vector<ObjectID> clones; // 本运行器造出来的克隆体
 
 	double now = 0.0;
@@ -103,6 +109,8 @@ private:
 	void _push_loop(RunnerThread *t, int p_kind, const Array &p_ops, int p_count, const Variant &p_cond);
 	void _push_warp(RunnerThread *t, const Array &p_ops);
 	void _push_proc(RunnerThread *t, const Array &p_body);
+	void _register_touching_hats(Node *p_target);
+	void _on_body_entered(Node3D *p_body);
 
 	Variant _get_var(const String &p_name, const String &p_scope, RunnerThread *t);
 	void _set_var(const String &p_name, const Variant &p_value, const String &p_scope, RunnerThread *t);

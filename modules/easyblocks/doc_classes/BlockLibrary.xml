@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BlockLibrary" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		积木定义表（引擎单例，名字叫 EasyBlocks）。
+	</brief_description>
+	<description>
+		所有积木和 op 的定义都在这里，来自模块里的 defs/*.json，构建时被打包进二进制。
+
+		「积木」面板的调色板、编译器、以及以后任何要"查有哪些积木"的地方，都从这里取。
+		想加新积木：只改 defs 里的 JSON，不用动 C++。
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

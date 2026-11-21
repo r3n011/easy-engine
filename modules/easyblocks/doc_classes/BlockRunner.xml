@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BlockRunner" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		积木运行器：执行挂在这个节点上的积木程序。
+	</brief_description>
+	<description>
+		把「积木」面板里拖出来的程序跑起来的东西。
+
+		它一般挂在角色下面：积木里的「自己」= 运行器的父节点。
+		程序本身是一个 BlockProgram 资源，跟着场景一起保存进 .tscn。
+
+		[codeblock]
+		Character (Node2D / Node3D)
+		└── BlockRunner   ← 积木挂在这里
+		[/codeblock]
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="auto_start" type="bool" setter="set_auto_start" getter="is_auto_start" default="true">
+			游戏一开始就自动跑「当绿旗被点击」这类积木。
+			关掉的话，需要别的脚本调用 start() 才跑。
+		</member>
+		<member name="debug_print" type="bool" setter="set_debug_print" getter="is_debug_print" default="false">
+			在输出面板里打印每一次积木执行和当前状态，用来查问题。
+			正式发布前记得关掉，否则输出会很多。
+		</member>
+		<member name="program" type="BlockProgram" setter="set_program" getter="get_program">
+			这个角色要执行的积木程序。它会跟着场景一起存进 .tscn，
+			所以换电脑、发给别人都不会丢。
+		</member>
+		<member name="program_json_path" type="String" setter="set_program_json_path" getter="get_program_json_path">
+			如果没挂 program，就从这里的 JSON 文件读积木。
+			方便先用文本写程序、或者从外部导入。
+		</member>
+		<member name="target_path" type="NodePath" setter="set_target_path" getter="get_target_path">
+			积木里的「自己」指谁。留空就是运行器的父节点（也就是角色本身）。
+			积木运行器单独挂在一个节点上时，这里指定它要控制的角色。
+		</member>
+	</members>
+</class>

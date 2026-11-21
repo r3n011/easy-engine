@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BlockProgram" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		一份积木程序（可存进 .tres / .tscn 的 Resource）。
+	</brief_description>
+	<description>
+		「积木」面板里搭出来的程序就存在这里。
+
+		它保存的是积木树（scripts），运行时会先编译成中间的 IR 再执行。
+		因为它是 Resource，所以能：
+		[br]· 跟着场景存进 .tscn
+		[br]· 在检查器里选中、被别的节点引用
+		[br]· 用引擎标准的导出流程打包
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="scripts" type="Array" setter="set_scripts" getter="get_scripts">
+			积木树。每个元素是一段脚本（一个帽子积木 + 下面接的一串）。
+			一般不用手改 —— 在「积木」面板里拖就是改它。
+		</member>
+	</members>
+</class>

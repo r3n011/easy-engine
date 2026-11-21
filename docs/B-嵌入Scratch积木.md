@@ -602,6 +602,29 @@ powershell -File tools\export-game.ps1 -Project test\3d -Out dist\3D演示
 （这个版本的 scratch-blocks 对"下拉菜单里单个选项"没有独立提示，
 选项本身已经写成人话了：立方体 / 球体 / 圆柱、红 / 橙 / 黄……）
 
+### 覆盖范围（不只积木）
+
+| 悬停对象 | 内容 | 来源 |
+|---|---|---|
+| 每个积木 | 一句话说明 + 每个参数的意思 | `defs/tips.zh.json`（77 条） |
+| 工具箱 12 个分类 | 这一整类是干什么的 | `bridge.js` 的 `CATEGORY_TIPS` |
+| 新建变量 / 新建列表 / 制作新的积木 对话框 | 每个输入框和按钮 | `dialogs.js` 的 `title` |
+| Godot 检查器里的属性 | 每个属性干什么、填什么 | `doc_classes/*.xml`（3 个类） |
+
+分类提示要按 **class** 里挖 id（`scratchCategoryId-motion`），不是 `id` 属性 ——
+scratch-blocks 的 DOM 跟文档不一样。验证输出：
+
+```
+让角色移动、转向、跳到某个位置        ← motion
+说话、换造型、改大小、显示或隐藏      ← looks
+把角色变成真正的 3D 物体（Scratch 做不到） ← ee3d
+重力、碰撞、冲量 —— 真物理，不是假的   ← eephys
+```
+
+检查器那部分用的是 Godot 官方的文档机制（`doc_classes/*.xml`），
+所以鼠标停在 BlockRunner 的 `program`、`auto_start` 这些属性上会显示中文说明。
+
+
 
 
 

@@ -119,6 +119,18 @@
     }
   ]);
 
+  // 帽子积木：物理碰撞事件。shape_hat 让它长成"帽子"，下面能接一串。
+  Blockly.Blocks['ee_phys_when_touching'] = {
+    init: function () {
+      this.jsonInit({
+        message0: '当碰到 %1 时',
+        args0: [{ type: 'field_input', name: 'OTHER', text: '@any' }],
+        extensions: ['shape_hat'],
+        colour: PHYS
+      });
+    }
+  };
+
   // ---- 工具箱：加一个「3D」分类 ----
   // default_toolbox 是一段 XML 字符串，直接往末尾插一个分类最省事，
   // 也不用去改 vendor 里的原文件（以后重装 scratch-blocks 不会丢）。
@@ -136,6 +148,7 @@
         '<block type="ee_3d_set_color" id="ee3d_color"></block>' +
         '</category>' +
         '<category name="物理" id="eephys" colour="' + PHYS + '" secondaryColour="#5A45C8">' +
+        '<block type="ee_phys_when_touching" id="ee_phys_touch"></block>' +
         '<block type="ee_phys_upgrade" id="ee_phys_up"></block>' +
         '<block type="ee_phys_impulse" id="ee_phys_imp"></block>' +
         '<block type="ee_phys_set_velocity" id="ee_phys_vel"></block>' +
@@ -168,6 +181,7 @@
     { s: 'ee_phys_impulse', e: 'core.phys.impulse', fields: { X: 'X', Y: 'Y', Z: 'Z' } },
     { s: 'ee_phys_set_velocity', e: 'core.phys.set_velocity', fields: { X: 'X', Y: 'Y', Z: 'Z' } },
     { s: 'ee_phys_set_gravity', e: 'core.phys.set_gravity', fields: { SCALE: 'SCALE' } },
-    { s: 'ee_phys_freeze', e: 'core.phys.freeze', fields: { MODE: 'MODE' } }
+    { s: 'ee_phys_freeze', e: 'core.phys.freeze', fields: { MODE: 'MODE' } },
+    { s: 'ee_phys_when_touching', e: 'core.phys.when_touching', nextFrom: 'BODY', fields: { OTHER: 'OTHER' } }
   ];
 })();

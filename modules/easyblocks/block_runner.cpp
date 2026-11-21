@@ -13,6 +13,7 @@
 #include "core/io/file_access.h"
 #include "core/math/math_funcs.h"
 #include "core/math/vector3.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/object/object.h"
 #include "scene/2d/animated_sprite_2d.h"
@@ -182,6 +183,8 @@ Error BlockRunner::_start_impl(bool p_clone_only) {
 		globals.clear();
 		global_lists.clear();
 		procedures.clear();
+		touching_bodies.clear();
+		touching_filters.clear();
 	}
 
 	// 程序来源：显式资源优先，其次从 JSON 文件读
@@ -233,8 +236,7 @@ Error BlockRunner::_start_impl(bool p_clone_only) {
 			continue;
 		}
 
-		if (String(hat.get("op", String())) != "event.hat") {
-			_warn(String::utf8("脚本的第 1 个积木不是帽子积木，忽略"));
+		if (String(hat.get("op", String())) != "event.hat") {			_warn(String::utf8("脚本的第 1 个积木不是帽子积木，忽略"));
 			continue;
 		}
 		// 克隆体的帽子只由 start_clone_hats() 启动；普通启动时跳过它，
@@ -243,6 +245,18 @@ Error BlockRunner::_start_impl(bool p_clone_only) {
 		if (clone_hat != p_clone_only) {
 			continue;
 		}
+
+		// 「当碰到 X 时」：不是启动时跑，而是等 body_entered 信号
+		if (String(hat.get("kind", String())) == "touching") {
+			touching_bodies.push_back(hat.get("body", Array()));
+			touching_filters.push_back(hat.get("other", Variant("@any")));
+			// 现在可能还不是物理体（要等「变成物理物体」），先试着接一次，
+			// 真正的连接在升级成刚体时再补。
+			_register_touching_hats(target);
+			started_count++;
+			continue;
+		}
+
 		Array body = hat.get("body", Array());
 		if (body.is_empty()) {
 			continue;
@@ -592,6 +606,46 @@ Variant BlockRunner::get_variable(const String &p_name) const {
 	return v ? *v : Variant();
 }
 
+// 把「当碰到…时」接到刚体的 body_entered 信号上。
+// 升级成物理体之后要再调一次（升级前它还只是普通 Node3D）。
+void BlockRunner::_register_touching_hats(Node *p_target) {
+	RigidBody3D *rb = Object::cast_to<RigidBody3D>(p_target);
+	if (rb == nullptr || touching_bodies.is_empty()) {
+		return;
+	}
+	if (touching_connected_to == rb->get_instance_id()) {
+		return;
+	}
+	rb->set_contact_monitor(true);
+	rb->set_max_contacts_reported(8);
+	rb->connect("body_entered", callable_mp(this, &BlockRunner::_on_body_entered));
+	touching_connected_to = rb->get_instance_id();
+}
+
+void BlockRunner::_on_body_entered(Node3D *p_body) {
+	if (p_body == nullptr) {
+		return;
+	}
+	const String body_name = String(p_body->get_name());
+
+	for (int i = 0; i < touching_bodies.size(); i++) {
+		const String filter = String(touching_filters[i]).strip_edges();
+		// @any / 空 / * 都表示"任何东西"；否则按节点名字匹配
+		if (!filter.is_empty() && filter != "@any" && filter != "*" && filter != body_name) {
+			continue;
+		}
+		const Array body = touching_bodies[i];
+		if (body.is_empty()) {
+			continue;
+		}
+		Node *target = get_parent();
+		if (target == nullptr) {
+			continue;
+		}
+		_new_thread(target, body);
+	}
+}
+
 // ============================================================ 造型 / 声音 / 克隆
 
 // ---- 3D 小工具 ----
@@ -733,6 +787,9 @@ static RigidBody3D *_eephys_upgrade(Node3D *p_node, double p_mass, double p_boun
 	mat->set_bounce(real_t(p_bounce));
 	mat->set_friction(0.8);
 	body->set_physics_material_override(mat);
+	// 不开接触监测的话，「当碰到…时」永远不会触发
+	body->set_contact_monitor(true);
+	body->set_max_contacts_reported(8);
 
 	CollisionShape3D *shape = memnew(CollisionShape3D);
 	Ref<BoxShape3D> box;
@@ -1365,6 +1422,8 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 			if (body != nullptr && t != nullptr) {
 				// 角色被换成了新节点，后续积木要作用在它身上
 				t->target = body;
+			// 升级成刚体后要补接触碰信号（帽子是在这之前注册的）
+			_register_touching_hats(body);
 			}
 			return Variant();
 		}

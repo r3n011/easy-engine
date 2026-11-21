@@ -1,0 +1,24 @@
+{
+  "extension": "ee.physics3d",
+  "extensionVersion": 2,
+  "description": "3D 物理积木（含碰到的帽子积木）",
+  "categories": [],
+  "blocks": [
+    {
+      "id": "core.phys.when_touching",
+      "version": 1,
+      "category": "eephys",
+      "shape": "hat",
+      "message": "当碰到 %OTHER% 时",
+      "args": {
+        "OTHER": { "type": "any", "default": "@any" }
+      },
+      "ir": {
+        "op": "event.hat",
+        "kind": "touching",
+        "other": { "$arg": "OTHER" },
+        "body": { "$branch": "BODY" }
+      }
+    }
+  ]
+}

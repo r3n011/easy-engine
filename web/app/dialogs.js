@@ -66,12 +66,13 @@
     var row = el('div', { 'class': 'ee-row' });
     row.appendChild(el('label', null, labelText));
     var input = el('input', { type: 'text', value: defaultValue || '' });
+    input.title = '给它起个名字，之后在积木里就能选到它';
     row.appendChild(input);
     card.appendChild(row);
 
     var actions = el('div', { 'class': 'ee-actions' });
-    var cancel = el('button', { 'class': 'ee-btn ee-cancel' }, '取消');
-    var ok = el('button', { 'class': 'ee-btn ee-ok' }, '确定');
+    var cancel = el('button', { 'class': 'ee-btn ee-cancel', title: '不新建了（Esc 也可以）' }, '取消');
+    var ok = el('button', { 'class': 'ee-btn ee-ok', title: '就用这个名字（回车也可以）' }, '确定');
     actions.appendChild(cancel);
     actions.appendChild(ok);
     card.appendChild(actions);
@@ -104,7 +105,7 @@
     nameRow.appendChild(el('label', null, '积木名字'));
     // 初始名字可能带 %s 占位符，剥掉
     var initialName = (initialProccode || '').replace(/\s*%[sb]/g, '').trim();
-    var nameInput = el('input', { type: 'text', value: initialName || '我的积木' });
+    var nameInput = el('input', { type: 'text', value: initialName || '我的积木', title: '新积木叫什么。比如「跳一下」「发射子弹」' });
     nameRow.appendChild(nameInput);
     card.appendChild(nameRow);
 
@@ -119,7 +120,7 @@
       paramsBox.innerHTML = '';
       params.forEach(function (p, i) {
         var row = el('div', { 'class': 'ee-param' });
-        var ni = el('input', { type: 'text', value: p.name });
+        var ni = el('input', { type: 'text', value: p.name, title: '参数的名字，在积木里显示成圆角框' });
         ni.oninput = function () { p.name = ni.value; };
         var sel = el('select');
         [['s', '文本/数字'], ['b', '布尔']].forEach(function (opt) {
@@ -128,7 +129,7 @@
           sel.appendChild(o);
         });
         sel.onchange = function () { p.type = sel.value; };
-        var del = el('button', { 'class': 'ee-del', title: '删除' }, '×');
+        var del = el('button', { 'class': 'ee-del', title: '删掉这个参数' }, '×');
         del.onclick = function () { params.splice(i, 1); render(); };
         row.appendChild(ni);
         row.appendChild(sel);
@@ -137,12 +138,12 @@
       });
     }
 
-    var addText = el('button', { 'class': 'ee-mini' }, '+ 文本/数字参数');
+    var addText = el('button', { 'class': 'ee-mini', title: '加一个可以填数字或文字的洞' }, '+ 文本/数字参数');
     addText.onclick = function () {
       params.push({ name: '参数' + (params.length + 1), type: 's' });
       render();
     };
-    var addBool = el('button', { 'class': 'ee-mini' }, '+ 布尔参数');
+    var addBool = el('button', { 'class': 'ee-mini', title: '加一个只能放条件（真/假）的洞' }, '+ 布尔参数');
     addBool.onclick = function () {
       params.push({ name: '条件' + (params.length + 1), type: 'b' });
       render();
@@ -154,13 +155,14 @@
 
     var warpRow = el('div', { 'class': 'ee-warp' });
     var warp = el('input', { type: 'checkbox' });
+    warp.title = '勾上：这个积木一口气跑完，中间不刷新画面（跑得快，但看不到过程）';
     warpRow.appendChild(warp);
     warpRow.appendChild(el('span', null, '运行时不刷新屏幕'));
     card.appendChild(warpRow);
 
     var actions = el('div', { 'class': 'ee-actions' });
-    var cancel = el('button', { 'class': 'ee-btn ee-cancel' }, '取消');
-    var ok = el('button', { 'class': 'ee-btn ee-ok' }, '确定');
+    var cancel = el('button', { 'class': 'ee-btn ee-cancel', title: '不新建了（Esc 也可以）' }, '取消');
+    var ok = el('button', { 'class': 'ee-btn ee-ok', title: '就用这个名字（回车也可以）' }, '确定');
     actions.appendChild(cancel);
     actions.appendChild(ok);
     card.appendChild(actions);
