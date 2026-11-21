@@ -137,6 +137,9 @@
     { s: 'data_hidelist', e: 'core.data.list_show', const: { MODE: 'hide' }, fields: { LIST: 'NAME' } }
   ];
 
+  // 3D 这类 Godot 独有的积木在 blocks3d.js 里定义，这里把它们的映射接进来
+  if (window.ee3dMap) { Array.prototype.push.apply(MAP, window.ee3dMap); }
+
   const byScratch = {};
   const byEngine = {};
   MAP.forEach(function (m) {

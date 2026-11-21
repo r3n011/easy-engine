@@ -457,6 +457,72 @@ getButtonCallback('CREATE_VARIABLE') → function
    `isInFlyout` 是 false。于是点开一次分类，程序里就多出几个空积木。
    修法：加一条 `b.workspace === workspace` 的硬判断。
 
+---
+
+## 3D 积木：这才"基于 Godot"的意义
+
+前面所有积木都是"把 Scratch 的能力搬到 Godot 上"——那是地基，不是卖点。
+补得再多，做出来的也只是"一个跑在 Godot 里的 Scratch"。
+
+**真正的卖点是 Scratch 根本做不到的事。** 第一块就是 3D。
+
+### 8 个积木（新分类「3D」，青色）
+
+```
+变成 [立方体] 形状 颜色 [红]
+镜头跟随自己 距离 12 高度 6
+移到 x 0 y 1 z 0
+坐标增加 x 0 y 0 z 0
+转到 x 0 y 30 z 0 度
+转动 x 0 y 5 z 0 度
+大小设为 1
+颜色设为 [蓝]
+```
+
+搭出来是这样的：
+
+```
+当 🏳 被点击
+  变成 立方体，颜色 红
+  镜头跟随自己，距离 12 高度 6
+  移到 x 0 y 1 z 0
+  转动 y 30 度
+  大小设为 2
+```
+
+这在 Scratch 里**物理上不可能**。在 Godot 里就是 `Node3D` + `MeshInstance3D` + `Camera3D`。
+
+### 实现
+
+| 层 | 做法 |
+|---|---|
+| 积木定义 | 新增 `modules/easyblocks/defs/blocks.ee.3d.json`（走已有的扩展机制，**编译器一行没改**） |
+| 积木外观 | `web/app/blocks3d.js`：用 scratch-blocks 的 `jsonInit` 定义自定义积木，往工具箱插一个「3D」分类 |
+| 桥 | 8 条映射（Scratch 类型 → 引擎积木 id），走同一个 `BlockProgram` |
+| 运行时 | `Node3D` 的位置/旋转/缩放；`MeshInstance3D` + `BoxMesh/SphereMesh/CylinderMesh`；`StandardMaterial3D` 上色；`Camera3D` 跟随 |
+
+**关键点：这不是"另开一套积木系统"。** 3D 积木和其它积木一样，
+存进同一份 `BlockProgram`、同一个 `.tscn`、同一套调度器、同一套撤销。
+
+### 验证
+
+无渲染跑出来：
+
+```
+角色=Hero:<Node3D>
+坐标=(0.0, 1.0, 0.0)        ← 移到 x 0 y 1 z 0
+旋转y=30.0                  ← 转动 y 30 度
+大小=(2.0, 2.0, 2.0)        ← 大小设为 2
+有网格=true 网格类型=MeshInstance3D
+网格形状=BoxMesh            ← 变成 立方体
+有相机=true                 ← 镜头跟随自己
+警告=[] 错误=[]
+```
+
+网页端也往返通过：`积木调试：XML=... <block type="ee_3d_set_shape">...`，
+回显 1 段、编译通过。截图 `docs/shot-3d.png`。
+
+
 
 
 

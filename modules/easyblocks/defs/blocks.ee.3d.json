@@ -1,0 +1,154 @@
+{
+  "extension": "ee.3d",
+  "extensionVersion": 1,
+  "description": "3D 积木 —— Scratch 做不到，Godot 天生就会",
+  "categories": [
+    {
+      "id": "ee3d",
+      "name": "3D",
+      "color": "#0FBD8C"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "core.3d.set_shape",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "变成 %KIND% 形状，颜色 %COLOR%",
+      "args": {
+        "KIND": { "type": "dropdown", "default": "cube" },
+        "COLOR": { "type": "dropdown", "default": "#ff4d4d" }
+      },
+      "ir": {
+        "op": "ee3d.set_shape",
+        "kind": { "$arg": "KIND" },
+        "color": { "$arg": "COLOR" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.set_position",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "移到 x %X% y %Y% z %Z%",
+      "args": {
+        "X": { "type": "number", "default": 0 },
+        "Y": { "type": "number", "default": 0 },
+        "Z": { "type": "number", "default": 0 }
+      },
+      "ir": {
+        "op": "ee3d.set_position",
+        "x": { "$arg": "X" },
+        "y": { "$arg": "Y" },
+        "z": { "$arg": "Z" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.change_position",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "坐标增加 x %DX% y %DY% z %DZ%",
+      "args": {
+        "DX": { "type": "number", "default": 0 },
+        "DY": { "type": "number", "default": 0 },
+        "DZ": { "type": "number", "default": 0 }
+      },
+      "ir": {
+        "op": "ee3d.change_position",
+        "dx": { "$arg": "DX" },
+        "dy": { "$arg": "DY" },
+        "dz": { "$arg": "DZ" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.set_rotation",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "转到 x %RX% y %RY% z %RZ% 度",
+      "args": {
+        "RX": { "type": "number", "default": 0 },
+        "RY": { "type": "number", "default": 0 },
+        "RZ": { "type": "number", "default": 0 }
+      },
+      "ir": {
+        "op": "ee3d.set_rotation",
+        "rx": { "$arg": "RX" },
+        "ry": { "$arg": "RY" },
+        "rz": { "$arg": "RZ" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.change_rotation",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "转动 x %DX% y %DY% z %DZ% 度",
+      "args": {
+        "DX": { "type": "number", "default": 0 },
+        "DY": { "type": "number", "default": 5 },
+        "DZ": { "type": "number", "default": 0 }
+      },
+      "ir": {
+        "op": "ee3d.change_rotation",
+        "dx": { "$arg": "DX" },
+        "dy": { "$arg": "DY" },
+        "dz": { "$arg": "DZ" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.set_scale",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "大小设为 %S%",
+      "args": {
+        "S": { "type": "number", "default": 1 }
+      },
+      "ir": {
+        "op": "ee3d.set_scale",
+        "scale": { "$arg": "S" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.set_color",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "颜色设为 %COLOR%",
+      "args": {
+        "COLOR": { "type": "dropdown", "default": "#4c97ff" }
+      },
+      "ir": {
+        "op": "ee3d.set_color",
+        "color": { "$arg": "COLOR" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.camera_follow",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "镜头跟随自己，距离 %DIST% 高度 %HEIGHT%",
+      "args": {
+        "DIST": { "type": "number", "default": 12 },
+        "HEIGHT": { "type": "number", "default": 6 }
+      },
+      "ir": {
+        "op": "ee3d.camera_follow",
+        "dist": { "$arg": "DIST" },
+        "height": { "$arg": "HEIGHT" },
+        "target": "@self"
+      }
+    }
+  ]
+}

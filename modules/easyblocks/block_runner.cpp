@@ -12,12 +12,18 @@
 #include "core/config/engine.h"
 #include "core/io/file_access.h"
 #include "core/math/math_funcs.h"
+#include "core/math/vector3.h"
 #include "core/object/class_db.h"
 #include "core/object/object.h"
 #include "scene/2d/animated_sprite_2d.h"
 #include "scene/2d/audio_stream_player_2d.h"
 #include "scene/2d/node_2d.h"
 #include "scene/2d/sprite_2d.h"
+#include "scene/3d/camera_3d.h"
+#include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/node_3d.h"
+#include "scene/resources/3d/primitive_meshes.h"
+#include "scene/resources/material.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
@@ -584,6 +590,108 @@ Variant BlockRunner::get_variable(const String &p_name) const {
 
 // ============================================================ 造型 / 声音 / 克隆
 
+// ---- 3D 小工具 ----
+// 角色的"3D 造型"是一个名为 EE_Mesh 的 MeshInstance3D 子节点。
+// 颜色存在节点 meta 里，换形状时颜色不会丢。
+static MeshInstance3D *_ee3d_mesh(Node3D *p_node, bool p_create) {
+	if (p_node == nullptr) {
+		return nullptr;
+	}
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		MeshInstance3D *mi = Object::cast_to<MeshInstance3D>(p_node->get_child(i));
+		if (mi != nullptr && String(mi->get_name()) == "EE_Mesh") {
+			return mi;
+		}
+	}
+	if (!p_create) {
+		return nullptr;
+	}
+	MeshInstance3D *mi = memnew(MeshInstance3D);
+	mi->set_name("EE_Mesh");
+	p_node->add_child(mi);
+	return mi;
+}
+
+static void _ee3d_apply_color(MeshInstance3D *p_mesh, const String &p_color) {
+	if (p_mesh == nullptr) {
+		return;
+	}
+	Ref<StandardMaterial3D> mat = p_mesh->get_surface_override_material(0);
+	if (mat.is_null()) {
+		mat.instantiate();
+		mat->set_roughness(0.55);
+		p_mesh->set_surface_override_material(0, mat);
+	}
+	mat->set_albedo(Color::html(p_color));
+	p_mesh->set_meta(StringName("ee_color"), p_color);
+}
+
+static void _ee3d_set_shape(Node3D *p_node, const String &p_kind, const String &p_color) {
+	MeshInstance3D *mi = _ee3d_mesh(p_node, true);
+	if (mi == nullptr) {
+		return;
+	}
+
+	Ref<Mesh> mesh;
+	if (p_kind == "sphere") {
+		Ref<SphereMesh> m;
+		m.instantiate();
+		m->set_radius(0.5);
+		m->set_height(1.0);
+		mesh = m;
+	} else if (p_kind == "cylinder") {
+		Ref<CylinderMesh> m;
+		m.instantiate();
+		m->set_top_radius(0.5);
+		m->set_bottom_radius(0.5);
+		m->set_height(1.0);
+		mesh = m;
+	} else {
+		Ref<BoxMesh> m;
+		m.instantiate();
+		m->set_size(Vector3(1, 1, 1));
+		mesh = m;
+	}
+	mi->set_mesh(mesh);
+
+	// 没给颜色就沿用上次的
+	String color = p_color;
+	if (color.is_empty() && mi->has_meta(StringName("ee_color"))) {
+		color = mi->get_meta(StringName("ee_color"));
+	}
+	_ee3d_apply_color(mi, color.is_empty() ? "#ff4d4d" : color);
+}
+
+static void _ee3d_camera_follow(Node3D *p_node, double p_dist, double p_height) {
+	if (p_node == nullptr || p_node->get_tree() == nullptr) {
+		return;
+	}
+
+	Camera3D *cam = nullptr;
+	Node *found = p_node->get_tree()->get_root()->find_child("EE_Camera", true, false);
+	cam = Object::cast_to<Camera3D>(found);
+	if (cam == nullptr) {
+		cam = memnew(Camera3D);
+		cam->set_name("EE_Camera");
+		cam->set_fov(60);
+		Node *host = p_node->get_tree()->get_current_scene();
+		if (host == nullptr) {
+			host = p_node->get_parent();
+		}
+		if (host == nullptr) {
+			memdelete(cam);
+			return;
+		}
+		host->add_child(cam);
+	}
+	cam->set_current(true);
+
+	const Vector3 at = p_node->get_global_position();
+	cam->set_global_position(at + Vector3(0, p_height, p_dist));
+	cam->look_at(at, Vector3::UP);
+}
+
+
 void BlockRunner::_apply_costume(Node *p_target, const String &p_name, const String &p_mode) {
 	if (p_target == nullptr) {
 		return;
@@ -1127,6 +1235,51 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 			return double(l + int(Math::rand() % uint32_t(h - l + 1)));
 		}
 		return lo + Math::randf() * (hi - lo);
+	}
+
+	// ---- 3D（Scratch 没有，Godot 天生就有）----
+	if (op_id.begins_with("ee3d.")) {
+		Node3D *n3 = Object::cast_to<Node3D>(target);
+		if (n3 == nullptr) {
+			_warn(String::utf8("3D 积木只能用在 Node3D 角色上（当前是 ") +
+					String(target != nullptr ? target->get_class() : String("<无>")) + "）");
+			return Variant();
+		}
+		if (op_id == "ee3d.set_shape") {
+			_ee3d_set_shape(n3, str("kind"), str("color"));
+			return Variant();
+		}
+		if (op_id == "ee3d.set_color") {
+			_ee3d_apply_color(_ee3d_mesh(n3, true), str("color"));
+			return Variant();
+		}
+		if (op_id == "ee3d.set_position") {
+			n3->set_position(Vector3(num("x"), num("y"), num("z")));
+			return Variant();
+		}
+		if (op_id == "ee3d.change_position") {
+			n3->set_position(n3->get_position() + Vector3(num("dx"), num("dy"), num("dz")));
+			return Variant();
+		}
+		if (op_id == "ee3d.set_rotation") {
+			n3->set_rotation(Vector3(Math::deg_to_rad(num("rx")),
+					Math::deg_to_rad(num("ry")), Math::deg_to_rad(num("rz"))));
+			return Variant();
+		}
+		if (op_id == "ee3d.change_rotation") {
+			n3->rotate_y(Math::deg_to_rad(num("dy")));
+			n3->rotate_x(Math::deg_to_rad(num("dx")));
+			n3->rotate_z(Math::deg_to_rad(num("dz")));
+			return Variant();
+		}
+		if (op_id == "ee3d.set_scale") {
+			n3->set_scale(Vector3(1, 1, 1) * real_t(num("scale")));
+			return Variant();
+		}
+		if (op_id == "ee3d.camera_follow") {
+			_ee3d_camera_follow(n3, num("dist"), num("height"));
+			return Variant();
+		}
 	}
 
 	// ---- 还没实现的：明确告警一次，不静默 ----
