@@ -27,6 +27,9 @@
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/cpu_particles_3d.h"
 #include "scene/3d/light_3d.h"
+#include "scene/3d/label_3d.h"
+#include "scene/main/viewport.h"
+#include "scene/gui/label.h"
 #include "scene/3d/physics/collision_shape_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
@@ -35,6 +38,7 @@
 #include "scene/resources/2d/rectangle_shape_2d.h"
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/material.h"
+#include "scene/resources/style_box_flat.h"
 #include "scene/resources/physics_material.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/main/scene_tree.h"
@@ -672,6 +676,18 @@ void BlockRunner::_handle_touch(const String &p_name) {
 	}
 }
 
+void BlockRunner::_hide_node(ObjectID p_id) {
+	Object *obj = ObjectDB::get_instance(p_id);
+	if (obj == nullptr) {
+		return;
+	}
+	if (CanvasItem *ci = Object::cast_to<CanvasItem>(obj)) {
+		ci->set_visible(false);
+	} else if (Node3D *n3 = Object::cast_to<Node3D>(obj)) {
+		n3->set_visible(false);
+	}
+}
+
 void BlockRunner::_free_node_by_id(ObjectID p_id) {
 	Object *obj = ObjectDB::get_instance(p_id);
 	if (obj == nullptr) {
@@ -1212,8 +1228,106 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 		}
 		return Variant(0);
 	}
+	if (op_id == "motion.bounce") {
+		// 只在 2D 有意义：碰到视口边缘就反弹（把方向关于边缘镜像）
+		Node2D *n2 = Object::cast_to<Node2D>(target);
+		if (n2 == nullptr) {
+			_warn(String::utf8("「碰到边缘就反弹」只对 2D 角色有效"));
+			return Variant();
+		}
+		const Rect2 bounds = get_viewport() != nullptr ? get_viewport()->get_visible_rect() : Rect2(-640, -360, 1280, 720);
+		const Vector2 pos = n2->get_position();
+		if (pos.x < bounds.position.x || pos.x > bounds.get_end().x) {
+			n2->set_rotation(-n2->get_rotation());
+		}
+		if (pos.y < bounds.position.y || pos.y > bounds.get_end().y) {
+			n2->set_rotation(Math::PI - n2->get_rotation());
+		}
+		return Variant();
+	}
 
 	// ---- 外观 ----
+	if (op_id == "looks.say") {
+		// 2D 用 Label，3D 用 Label3D —— 都挂在角色下面，跟着走
+		const String text = EBValues::to_string(arg("text"));
+		const double secs = EBValues::to_number(arg("seconds"));
+		Node *bubble = nullptr;
+		for (int i = 0; i < target->get_child_count(); i++) {
+			Node *c = target->get_child(i);
+			if (String(c->get_name()) == "EE_Say") {
+				bubble = c;
+				break;
+			}
+		}
+		if (bubble == nullptr) {
+			if (Object::cast_to<Node3D>(target) != nullptr) {
+				Label3D *l3 = memnew(Label3D);
+				l3->set_name("EE_Say");
+				l3->set_font_size(64);
+				l3->set_pixel_size(0.004f);
+				l3->set_outline_size(12);
+				l3->set_modulate(Color(1, 1, 1));
+				l3->set_outline_modulate(Color(0.1, 0.1, 0.15));
+				l3->set_position(Vector3(0, 0.9f, 0));
+				target->add_child(l3);
+				bubble = l3;
+			} else if (Node2D *n2 = Object::cast_to<Node2D>(target)) {
+				Label *l = memnew(Label);
+				l->set_name("EE_Say");
+				l->set_position(Vector2(-40, -70));
+				l->add_theme_font_size_override("font_size", 18);
+				l->add_theme_color_override("font_color", Color(0.1f, 0.12f, 0.18f));
+				l->add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95f));
+				l->add_theme_constant_override("outline_size", 5);
+				n2->add_child(l);
+				bubble = l;
+			}
+		}
+		if (bubble == nullptr) {
+			return Variant();
+		}
+
+		if (Label3D *l3 = Object::cast_to<Label3D>(bubble)) {
+			l3->set_text(text);
+			l3->set_visible(!text.is_empty());
+		} else if (Label *l = Object::cast_to<Label>(bubble)) {
+			l->set_text(text);
+			l->set_visible(!text.is_empty());
+			if (!text.is_empty()) {
+				l->reset_size();
+				l->set_position(Vector2(-l->get_size().x * 0.5f, -70));
+			}
+		}
+
+		if (secs > 0.0) {
+			// 说 N 秒后自动收起
+			Ref<SceneTreeTimer> timer = get_tree()->create_timer(secs);
+			timer->connect("timeout", callable_mp(this, &BlockRunner::_hide_node).bind(bubble->get_instance_id()));
+			t->status = THREAD_YIELD_TIME;
+			t->resume_at = now + secs;
+		}
+		return Variant();
+	}
+	if (op_id == "looks.set_size") {
+		const double pct = EBValues::to_number(arg("percent")) / 100.0;
+		if (str("mode") == "change") {
+			if (Node2D *n2 = Object::cast_to<Node2D>(target)) {
+				n2->set_scale(n2->get_scale() * real_t(1.0 + pct));
+			} else if (Node3D *n3 = Object::cast_to<Node3D>(target)) {
+				n3->set_scale(n3->get_scale() * real_t(1.0 + pct));
+			}
+		} else {
+			Vector2 s;
+			s.x = real_t(pct);
+			s.y = real_t(pct);
+			if (Node2D *n2 = Object::cast_to<Node2D>(target)) {
+				n2->set_scale(s);
+			} else if (Node3D *n3 = Object::cast_to<Node3D>(target)) {
+				n3->set_scale(Vector3(real_t(pct), real_t(pct), real_t(pct)));
+			}
+		}
+		return Variant();
+	}
 	if (op_id == "looks.set_visible") {
 		if (CanvasItem *ci = Object::cast_to<CanvasItem>(target)) {
 			ci->set_visible(EBValues::to_bool(arg("visible")));

@@ -115,6 +115,7 @@ private:
 	void _on_body_entered_2d(Node2D *p_body);
 	void _handle_touch(const String &p_name);
 	void _free_node_by_id(ObjectID p_id);
+	void _hide_node(ObjectID p_id);
 
 	Variant _get_var(const String &p_name, const String &p_scope, RunnerThread *t);
 	void _set_var(const String &p_name, const Variant &p_value, const String &p_scope, RunnerThread *t);
