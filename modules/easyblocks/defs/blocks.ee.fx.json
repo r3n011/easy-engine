@@ -1,0 +1,25 @@
+{
+  "extension": "ee.fx",
+  "extensionVersion": 1,
+  "description": "特效积木：粒子爆发（Scratch 没有）",
+  "categories": [],
+  "blocks": [
+    {
+      "id": "core.3d.burst",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "喷一下粒子 颜色 %COLOR% 数量 %AMOUNT%",
+      "args": {
+        "COLOR": { "type": "dropdown", "default": "#ffd500" },
+        "AMOUNT": { "type": "number", "default": 24 }
+      },
+      "ir": {
+        "op": "ee3d.burst",
+        "color": { "$arg": "COLOR" },
+        "amount": { "$arg": "AMOUNT" },
+        "target": "@self"
+      }
+    }
+  ]
+}

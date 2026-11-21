@@ -131,6 +131,12 @@
     }
   };
 
+  // 粒子特效：Scratch 完全没有的东西
+  Blockly.Blocks['ee_3d_burst'] = stackDef('喷一下粒子 颜色 %1 数量 %2', [
+    { type: 'field_dropdown', name: 'COLOR', options: COLOR_OPTIONS },
+    num('AMOUNT', 24)
+  ]);
+
   // ---- 工具箱：加一个「3D」分类 ----
   // default_toolbox 是一段 XML 字符串，直接往末尾插一个分类最省事，
   // 也不用去改 vendor 里的原文件（以后重装 scratch-blocks 不会丢）。
@@ -146,6 +152,7 @@
         '<block type="ee_3d_change_rotation" id="ee3d_drot"></block>' +
         '<block type="ee_3d_set_scale" id="ee3d_scale"></block>' +
         '<block type="ee_3d_set_color" id="ee3d_color"></block>' +
+        '<block type="ee_3d_burst" id="ee3d_burst"></block>' +
         '</category>' +
         '<category name="物理" id="eephys" colour="' + PHYS + '" secondaryColour="#5A45C8">' +
         '<block type="ee_phys_when_touching" id="ee_phys_touch"></block>' +
@@ -156,6 +163,10 @@
         '<block type="ee_phys_freeze" id="ee_phys_freeze"></block>' +
         '</category>';
       // 插在「变量」分类前面（别塞到最后，会被 Extensions 挤到看不见）
+      // 去掉「Extensions」分类：里面全是还没实现的扩展积木，
+      // 留着只会让孩子拖出来发现不能用（"少而全"比"多而空"重要）。
+      tb = tb.replace(/<category name="Extensions"[\s\S]*?<\/category>/, '');
+
       var anchor = '<category name="%{BKY_CATEGORY_VARIABLES}"';
       Blockly.Blocks.defaultToolbox = (tb.indexOf(anchor) >= 0)
         ? tb.replace(anchor, cat + anchor)
@@ -182,6 +193,7 @@
     { s: 'ee_phys_set_velocity', e: 'core.phys.set_velocity', fields: { X: 'X', Y: 'Y', Z: 'Z' } },
     { s: 'ee_phys_set_gravity', e: 'core.phys.set_gravity', fields: { SCALE: 'SCALE' } },
     { s: 'ee_phys_freeze', e: 'core.phys.freeze', fields: { MODE: 'MODE' } },
-    { s: 'ee_phys_when_touching', e: 'core.phys.when_touching', nextFrom: 'BODY', fields: { OTHER: 'OTHER' } }
+    { s: 'ee_phys_when_touching', e: 'core.phys.when_touching', nextFrom: 'BODY', fields: { OTHER: 'OTHER' } },
+    { s: 'ee_3d_burst', e: 'core.3d.burst', fields: { COLOR: 'COLOR', AMOUNT: 'AMOUNT' } }
   ];
 })();

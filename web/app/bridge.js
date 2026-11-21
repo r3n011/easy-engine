@@ -750,6 +750,23 @@
     patchAssetMenus();
     applyTips();
 
+    // 编辑器顶部工具条调过来的命令（新建变量/列表/积木都在网页这边弹窗）
+    window.eeCommand = function (cmd) {
+      if (!workspace) return;
+      var cb = null;
+      if (cmd === 'new_variable') {
+        cb = workspace.getButtonCallback && workspace.getButtonCallback('CREATE_VARIABLE');
+      } else if (cmd === 'new_list') {
+        cb = workspace.getButtonCallback && workspace.getButtonCallback('CREATE_LIST');
+      } else if (cmd === 'new_block') {
+        if (Blockly.Procedures && Blockly.Procedures.createProcedureDefCallback_) {
+          Blockly.Procedures.createProcedureDefCallback_(workspace);
+        }
+        return;
+      }
+      if (cb) cb();
+    };
+
     // ---- 分类回调：变量 / 列表 / 自制积木 ----
     // 工具箱里这两个分类是 custom="VARIABLE" / custom="PROCEDURE"，
     // 不注册回调的话点开是空的 —— 用户也就没法新建变量/列表/积木。

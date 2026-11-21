@@ -14,12 +14,8 @@
                 "block": "core.3d.set_position",
                 "inputs": { "X": { "value": 0 }, "Y": { "value": 1 }, "Z": { "value": 0 } },
                 "next": {
-                  "block": "core.3d.change_rotation",
-                  "inputs": { "DX": { "value": 0 }, "DY": { "value": 30 }, "DZ": { "value": 0 } },
-                  "next": {
-                    "block": "core.3d.set_scale",
-                    "inputs": { "S": { "value": 2 } }
-                  }
+                  "block": "core.3d.burst",
+                  "inputs": { "COLOR": { "value": "#ffd500" }, "AMOUNT": { "value": 24 } }
                 }
               }
             }

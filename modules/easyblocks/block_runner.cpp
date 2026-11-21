@@ -19,14 +19,18 @@
 #include "scene/2d/animated_sprite_2d.h"
 #include "scene/2d/audio_stream_player_2d.h"
 #include "scene/2d/node_2d.h"
+#include "scene/2d/physics/collision_shape_2d.h"
+#include "scene/2d/physics/rigid_body_2d.h"
 #include "scene/2d/sprite_2d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/cpu_particles_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/physics/collision_shape_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/physics/rigid_body_3d.h"
 #include "scene/resources/3d/box_shape_3d.h"
+#include "scene/resources/2d/rectangle_shape_2d.h"
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/material.h"
 #include "scene/resources/physics_material.h"
@@ -610,24 +614,42 @@ Variant BlockRunner::get_variable(const String &p_name) const {
 // 把「当碰到…时」接到刚体的 body_entered 信号上。
 // 升级成物理体之后要再调一次（升级前它还只是普通 Node3D）。
 void BlockRunner::_register_touching_hats(Node *p_target) {
-	RigidBody3D *rb = Object::cast_to<RigidBody3D>(p_target);
-	if (rb == nullptr || touching_bodies.is_empty()) {
+	if (p_target == nullptr || touching_bodies.is_empty()) {
 		return;
 	}
-	if (touching_connected_to == rb->get_instance_id()) {
+	if (touching_connected_to == p_target->get_instance_id()) {
 		return;
 	}
-	rb->set_contact_monitor(true);
-	rb->set_max_contacts_reported(8);
-	rb->connect("body_entered", callable_mp(this, &BlockRunner::_on_body_entered));
-	touching_connected_to = rb->get_instance_id();
+	// 2D 和 3D 都能接，信号参数的节点类型不同，所以用两个回调转发
+	if (RigidBody2D *rb2 = Object::cast_to<RigidBody2D>(p_target)) {
+		rb2->set_contact_monitor(true);
+		rb2->set_max_contacts_reported(8);
+		rb2->connect("body_entered", callable_mp(this, &BlockRunner::_on_body_entered_2d));
+		touching_connected_to = p_target->get_instance_id();
+		return;
+	}
+	if (RigidBody3D *rb = Object::cast_to<RigidBody3D>(p_target)) {
+		rb->set_contact_monitor(true);
+		rb->set_max_contacts_reported(8);
+		rb->connect("body_entered", callable_mp(this, &BlockRunner::_on_body_entered));
+		touching_connected_to = p_target->get_instance_id();
+	}
 }
 
 void BlockRunner::_on_body_entered(Node3D *p_body) {
-	if (p_body == nullptr) {
-		return;
+	if (p_body != nullptr) {
+		_handle_touch(String(p_body->get_name()));
 	}
-	const String body_name = String(p_body->get_name());
+}
+
+void BlockRunner::_on_body_entered_2d(Node2D *p_body) {
+	if (p_body != nullptr) {
+		_handle_touch(String(p_body->get_name()));
+	}
+}
+
+void BlockRunner::_handle_touch(const String &p_name) {
+	const String body_name = p_name;
 
 	for (int i = 0; i < touching_bodies.size(); i++) {
 		const String filter = String(touching_filters[i]).strip_edges();
@@ -644,6 +666,16 @@ void BlockRunner::_on_body_entered(Node3D *p_body) {
 			continue;
 		}
 		_new_thread(target, body);
+	}
+}
+
+void BlockRunner::_free_node_by_id(ObjectID p_id) {
+	Object *obj = ObjectDB::get_instance(p_id);
+	if (obj == nullptr) {
+		return;
+	}
+	if (Node *node = Object::cast_to<Node>(obj)) {
+		node->queue_free();
 	}
 }
 
@@ -765,7 +797,78 @@ static void _ee3d_camera_follow(Node3D *p_node, double p_dist, double p_height) 
 	cam->look_at(at, Vector3::UP);
 }
 
-// 把一个普通 Node3D 角色"换"成 RigidBody3D：
+// 把一个普通 Node2D 角色"换"成 RigidBody2D（2D 版，逻辑和 3D 一样）
+static RigidBody2D *_eephys_upgrade_2d(Node2D *p_node, double p_mass, double p_bounce) {
+	if (p_node == nullptr) {
+		return nullptr;
+	}
+	if (RigidBody2D *already = Object::cast_to<RigidBody2D>(p_node)) {
+		already->set_mass(real_t(p_mass));
+		Ref<PhysicsMaterial> mat = already->get_physics_material_override();
+		if (mat.is_null()) {
+			mat.instantiate();
+		}
+		mat->set_bounce(real_t(p_bounce));
+		already->set_physics_material_override(mat);
+		return already;
+	}
+
+	Node *parent = p_node->get_parent();
+	if (parent == nullptr) {
+		return nullptr;
+	}
+
+	RigidBody2D *body = memnew(RigidBody2D);
+	body->set_name(p_node->get_name());
+	body->set_transform(p_node->get_transform());
+	body->set_mass(real_t(p_mass));
+
+	Ref<PhysicsMaterial> mat;
+	mat.instantiate();
+	mat->set_bounce(real_t(p_bounce));
+	mat->set_friction(0.8);
+	body->set_physics_material_override(mat);
+	body->set_contact_monitor(true);
+	body->set_max_contacts_reported(8);
+
+	// 碰撞盒大小：有 Sprite2D 就照它的贴图大小，否则 32x32
+	Size2 size(32, 32);
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		if (Sprite2D *sp = Object::cast_to<Sprite2D>(p_node->get_child(i))) {
+			if (sp->get_texture().is_valid()) {
+				size = sp->get_texture()->get_size();
+			}
+			break;
+		}
+	}
+	CollisionShape2D *shape = memnew(CollisionShape2D);
+	Ref<RectangleShape2D> rect;
+	rect.instantiate();
+	rect->set_size(size);
+	shape->set_shape(rect);
+	body->add_child(shape);
+
+	Vector<Node *> kids;
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		kids.push_back(p_node->get_child(i));
+	}
+	for (int i = 0; i < kids.size(); i++) {
+		p_node->remove_child(kids[i]);
+		body->add_child(kids[i]);
+	}
+
+	const int index = p_node->get_index();
+	const String old_name = p_node->get_name();
+	parent->add_child(body);
+	parent->move_child(body, index);
+	parent->remove_child(p_node);
+	body->set_name(old_name);
+	p_node->queue_free();
+
+	return body;
+}
+
+
 // 原地替换（保持父节点、位置、子节点），造型网格和积木运行器都搬过去。
 // 这样积木里的"自己"就变成了真正的物理体，重力和碰撞全交给 Godot。
 static RigidBody3D *_eephys_upgrade(Node3D *p_node, double p_mass, double p_bounce) {
@@ -1424,22 +1527,72 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 			_ee3d_camera_follow(n3, num("dist"), num("height"));
 			return Variant();
 		}
+		if (op_id == "ee3d.burst") {
+			CPUParticles3D *p = memnew(CPUParticles3D);
+			p->set_name("EE_Particles");
+			p->set_amount(int(CLAMP(num("amount"), 4, 128)));
+			p->set_one_shot(true);
+			p->set_explosiveness_ratio(1.0f);
+			p->set_lifetime(1.0);
+			p->set_direction(Vector3(0, 1, 0));
+			p->set_spread(180.0f);
+			p->set_param_min(CPUParticles3D::PARAM_INITIAL_LINEAR_VELOCITY, 1.5);
+			p->set_param_max(CPUParticles3D::PARAM_INITIAL_LINEAR_VELOCITY, 4.5);
+			p->set_gravity(Vector3(0, -6, 0));
+
+			Ref<SphereMesh> dot;
+			dot.instantiate();
+			dot->set_radius(0.07);
+			dot->set_height(0.14);
+			p->set_mesh(dot);
+
+			Ref<StandardMaterial3D> mat;
+			mat.instantiate();
+			mat->set_albedo(Color::html(str("color")));
+			mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+			p->set_material_override(mat);
+
+			n3->add_child(p);
+			p->set_emitting(true);
+			// 两秒后自己删掉，别让节点越积越多
+			Ref<SceneTreeTimer> timer = get_tree()->create_timer(2.0);
+			timer->connect("timeout", callable_mp(this, &BlockRunner::_free_node_by_id).bind(p->get_instance_id()));
+			return Variant();
+		}
 	}
 
-	// ---- 物理（3D）----
+	// ---- 物理（2D / 3D 都支持，同一套积木）----
 	if (op_id.begins_with("eephys.")) {
 		if (op_id == "eephys.upgrade") {
-			Node3D *n3 = Object::cast_to<Node3D>(target);
-			if (n3 == nullptr) {
-				_warn(String::utf8("「变成物理物体」只能用在 3D 角色上"));
+			if (Node2D *n2 = Object::cast_to<Node2D>(target)) {
+				RigidBody2D *body2 = _eephys_upgrade_2d(n2, num("mass"), num("bounce"));
+				if (body2 != nullptr && t != nullptr) {
+					t->target = body2;
+					_register_touching_hats(body2);
+				}
 				return Variant();
 			}
-			RigidBody3D *body = _eephys_upgrade(n3, num("mass"), num("bounce"));
-			if (body != nullptr && t != nullptr) {
-				// 角色被换成了新节点，后续积木要作用在它身上
-				t->target = body;
-			// 升级成刚体后要补接触碰信号（帽子是在这之前注册的）
-			_register_touching_hats(body);
+			if (Node3D *n3 = Object::cast_to<Node3D>(target)) {
+				RigidBody3D *body3 = _eephys_upgrade(n3, num("mass"), num("bounce"));
+				if (body3 != nullptr && t != nullptr) {
+					t->target = body3;
+					_register_touching_hats(body3);
+				}
+				return Variant();
+			}
+			_warn(String::utf8("「变成物理物体」只能用在 2D 或 3D 角色上"));
+			return Variant();
+		}
+
+		if (RigidBody2D *rb2 = Object::cast_to<RigidBody2D>(target)) {
+			if (op_id == "eephys.impulse") {
+				rb2->apply_impulse(Vector2(num("x"), num("y")));
+			} else if (op_id == "eephys.set_velocity") {
+				rb2->set_linear_velocity(Vector2(num("x"), num("y")));
+			} else if (op_id == "eephys.set_gravity") {
+				rb2->set_gravity_scale(real_t(num("scale")));
+			} else if (op_id == "eephys.freeze") {
+				rb2->set_freeze_enabled(str("mode") == "freeze");
 			}
 			return Variant();
 		}

@@ -12,6 +12,7 @@
 
 class BlockProgram;
 class Node3D;
+class Node2D;
 
 /**
  * 执行一份积木程序。
@@ -111,6 +112,9 @@ private:
 	void _push_proc(RunnerThread *t, const Array &p_body);
 	void _register_touching_hats(Node *p_target);
 	void _on_body_entered(Node3D *p_body);
+	void _on_body_entered_2d(Node2D *p_body);
+	void _handle_touch(const String &p_name);
+	void _free_node_by_id(ObjectID p_id);
 
 	Variant _get_var(const String &p_name, const String &p_scope, RunnerThread *t);
 	void _set_var(const String &p_name, const Variant &p_value, const String &p_scope, RunnerThread *t);

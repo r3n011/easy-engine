@@ -8,6 +8,7 @@
 #include "editor/plugins/editor_plugin.h"
 
 class Control;
+class CheckButton;
 class EasyBlocksWebView;
 class BlockRunner;
 class BlockProgram;
@@ -32,7 +33,13 @@ class EasyBlocksEditorPlugin : public EditorPlugin {
 	uint64_t last_apply_ms = 0;
 	bool undo_test_started = false;
 
+	CheckButton *simple_mode = nullptr;
+
 	void _test_undo();
+	void _on_run_pressed();
+	void _on_stop_pressed();
+	void _on_command(const String &p_command);
+	void _set_simple_mode(bool p_on);
 
 	void _on_selection_changed();
 	void _on_page_message(const String &p_text);

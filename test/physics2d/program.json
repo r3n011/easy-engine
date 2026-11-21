@@ -1,0 +1,5 @@
+[
+  { "top": { "block": "core.event.when_flag_clicked", "inputs": { "BODY": { "stack": {
+      "block": "core.phys.upgrade", "inputs": { "MASS": { "value": 1 }, "BOUNCE": { "value": 0.3 } }
+  } } } } }
+]

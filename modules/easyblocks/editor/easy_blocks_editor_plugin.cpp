@@ -17,6 +17,7 @@
 #include "core/string/ustring.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_data.h"
+#include "editor/docks/editor_dock_manager.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "scene/main/scene_tree.h"
 #include "scene/2d/animated_sprite_2d.h"
@@ -24,12 +25,61 @@
 #include "scene/2d/sprite_2d.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/gui/box_container.h"
+#include "scene/gui/button.h"
+#include "scene/gui/check_button.h"
 #include "scene/gui/label.h"
+#include "scene/gui/separator.h"
 
 EasyBlocksEditorPlugin::EasyBlocksEditorPlugin() {
 	debug_bridge = OS::get_singleton()->has_environment("EASYBLOCKS_DEBUG");
 	VBoxContainer *vb = memnew(VBoxContainer);
 	vb->set_name("EasyBlocksPanel");
+
+	// ---- 顶部工具条：孩子只需要这几个按钮，不用去 Godot 的菜单里找 ----
+	HBoxContainer *bar = memnew(HBoxContainer);
+	bar->add_theme_constant_override("separation", 6);
+
+	Button *run_btn = memnew(Button);
+	run_btn->set_text(String::utf8("▶ 运行"));
+	run_btn->set_tooltip_text(String::utf8("运行游戏（和按 F5 一样）"));
+	run_btn->connect("pressed", callable_mp(this, &EasyBlocksEditorPlugin::_on_run_pressed));
+	bar->add_child(run_btn);
+
+	Button *stop_btn = memnew(Button);
+	stop_btn->set_text(String::utf8("⏹ 停止"));
+	stop_btn->set_tooltip_text(String::utf8("停止运行"));
+	stop_btn->connect("pressed", callable_mp(this, &EasyBlocksEditorPlugin::_on_stop_pressed));
+	bar->add_child(stop_btn);
+
+	bar->add_child(memnew(VSeparator));
+
+	Button *new_var = memnew(Button);
+	new_var->set_text(String::utf8("新建变量"));
+	new_var->set_tooltip_text(String::utf8("存一个会变的值，比如得分"));
+	new_var->connect("pressed", callable_mp(this, &EasyBlocksEditorPlugin::_on_command).bind(String("new_variable")));
+	bar->add_child(new_var);
+
+	Button *new_list = memnew(Button);
+	new_list->set_text(String::utf8("新建列表"));
+	new_list->set_tooltip_text(String::utf8("存一串数据，比如背包里的物品"));
+	new_list->connect("pressed", callable_mp(this, &EasyBlocksEditorPlugin::_on_command).bind(String("new_list")));
+	bar->add_child(new_list);
+
+	Button *new_block = memnew(Button);
+	new_block->set_text(String::utf8("新建积木"));
+	new_block->set_tooltip_text(String::utf8("自己做一个新积木，可以带参数"));
+	new_block->connect("pressed", callable_mp(this, &EasyBlocksEditorPlugin::_on_command).bind(String("new_block")));
+	bar->add_child(new_block);
+
+	bar->add_child(memnew(VSeparator));
+
+	simple_mode = memnew(CheckButton);
+	simple_mode->set_text(String::utf8("简化模式"));
+	simple_mode->set_tooltip_text(String::utf8("收起左右两侧的面板，只留画面和积木（再点一次恢复）"));
+	simple_mode->connect("toggled", callable_mp(this, &EasyBlocksEditorPlugin::_set_simple_mode));
+	bar->add_child(simple_mode);
+
+	vb->add_child(bar);
 
 	// 底部面板默认很矮，给个下限，让它一打开就像 Scratch 那样有一整块画布
 	web_view = memnew(EasyBlocksWebView);
@@ -72,6 +122,11 @@ EasyBlocksEditorPlugin::EasyBlocksEditorPlugin() {
 	// 演示/截图用：设了这个环境变量就把「积木」面板直接切到前台
 	if (OS::get_singleton()->has_environment("EASYBLOCKS_SHOW_PANEL")) {
 		call_deferred(StringName("make_bottom_panel_item_visible"), panel);
+	}
+
+	// 演示/截图用：直接进简化模式（收起左右面板）
+	if (OS::get_singleton()->has_environment("EASYBLOCKS_SIMPLE")) {
+		simple_mode->set_pressed(true);
 	}
 }
 
@@ -374,8 +429,38 @@ void EasyBlocksEditorPlugin::_test_undo() {
 	}
 }
 
-void EasyBlocksEditorPlugin::_on_history_changed() {
-	// 撤销/重做会让资源里的积木变了，网页得跟着刷新。
+// ============================================================ 工具条
+
+void EasyBlocksEditorPlugin::_on_run_pressed() {
+	EditorInterface::get_singleton()->play_main_scene();
+}
+
+void EasyBlocksEditorPlugin::_on_stop_pressed() {
+	EditorInterface::get_singleton()->stop_playing_scene();
+}
+
+void EasyBlocksEditorPlugin::_on_command(const String &p_command) {
+	if (web_view == nullptr) {
+		return;
+	}
+	// 命令交给网页执行（新建变量/列表/积木的对话框都在那边）
+	web_view->eval("window.eeCommand && window.eeCommand(" +
+			JSON::stringify(p_command, "", false, true) + ")");
+}
+
+void EasyBlocksEditorPlugin::_set_simple_mode(bool p_on) {
+	// 简化模式：把左右两侧的停靠面板收起来，只留中间的画布和下面的积木。
+	// 这是"面向孩子"最直接的一刀 —— Godot 默认界面东西太多了。
+	EditorDockManager *dock = EditorDockManager::get_singleton();
+	if (dock != nullptr) {
+		dock->set_docks_visible(!p_on);
+	}
+	if (p_on && panel != nullptr) {
+		make_bottom_panel_item_visible(panel);
+	}
+}
+
+void EasyBlocksEditorPlugin::_on_history_changed() {	// 撤销/重做会让资源里的积木变了，网页得跟着刷新。
 	// 但自己刚提交的那次也会触发这个信号，别把用户正在拖的积木冲掉。
 	if (Time::get_singleton()->get_ticks_msec() - last_apply_ms < 800) {
 		return;
