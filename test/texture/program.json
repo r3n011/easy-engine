@@ -1,0 +1,7 @@
+[
+  { "top": { "block": "core.event.when_flag_clicked", "inputs": { "BODY": { "stack": {
+      "block": "core.3d.set_shape", "inputs": { "KIND": { "value": "cube" }, "COLOR": { "value": "#ff4d4d" } },
+      "next": { "block": "core.3d.set_image", "inputs": { "PATH": { "value": "res://dot.png" } },
+        "next": { "block": "core.phys.make_static", "inputs": { "KIND": { "value": "cube" } } } }
+  } } } } }
+]

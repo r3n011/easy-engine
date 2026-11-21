@@ -9,6 +9,8 @@
 #include "values.h"
 
 #include "core/io/json.h"
+#include "core/io/image.h"
+#include "core/io/resource_loader.h"
 #include "core/config/engine.h"
 #include "core/io/file_access.h"
 #include "core/math/math_funcs.h"
@@ -38,6 +40,7 @@
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 #include "scene/resources/sprite_frames.h"
+#include "scene/resources/image_texture.h"
 
 // 单帧单线程的 op 预算：防止String::utf8("不让步的死循环")把程序卡死
 static const int MAX_OPS_PER_FRAME = 2000000;
@@ -1527,8 +1530,51 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 			_ee3d_camera_follow(n3, num("dist"), num("height"));
 			return Variant();
 		}
-		if (op_id == "ee3d.burst") {
-			CPUParticles3D *p = memnew(CPUParticles3D);
+		if (op_id == "ee3d.set_image") {
+			const String path = str("path");
+			if (path.is_empty()) {
+				return Variant();
+			}
+			Ref<Texture2D> tex = ResourceLoader::load(path);
+			if (tex.is_null()) {
+				// 没被导入过的图片（比如刚拷进项目、还没在编辑器里打开过）：
+				// 直接从文件读，别让用户卡在"为什么没反应"。
+				Ref<Image> img = Image::load_from_file(path);
+				if (img.is_valid()) {
+					tex = ImageTexture::create_from_image(img);
+				}
+			}
+			if (tex.is_null()) {
+				_warn(String::utf8("加载不到图片：") + path);
+				return Variant();
+			}
+			if (Node3D *n3 = Object::cast_to<Node3D>(target)) {
+				MeshInstance3D *mi = _ee3d_mesh(n3, true);
+				if (mi != nullptr) {
+					Ref<StandardMaterial3D> mat = mi->get_surface_override_material(0);
+					if (mat.is_null()) {
+						mat.instantiate();
+						mi->set_surface_override_material(0, mat);
+					}
+					mat->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, tex);
+					mat->set_albedo(Color(1, 1, 1));
+				}
+			} else if (Node2D *n2 = Object::cast_to<Node2D>(target)) {
+				if (Sprite2D *sp = Object::cast_to<Sprite2D>(n2)) {
+					sp->set_texture(tex);
+				} else {
+					for (int i = 0; i < n2->get_child_count(); i++) {
+						if (Sprite2D *child_sprite = Object::cast_to<Sprite2D>(n2->get_child(i))) {
+							child_sprite->set_texture(tex);
+							break;
+						}
+					}
+				}
+			}
+			return Variant();
+		}
+
+		if (op_id == "ee3d.burst") {			CPUParticles3D *p = memnew(CPUParticles3D);
 			p->set_name("EE_Particles");
 			p->set_amount(int(CLAMP(num("amount"), 4, 128)));
 			p->set_one_shot(true);
@@ -1584,9 +1630,39 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 			return Variant();
 		}
 
+		if (op_id == "eephys.make_static") {
+			// 固定不动的地板/墙/斜坡：用"冻结的刚体"实现，
+			// 物理上等价于静态碰撞体，而且能复用同一套节点替换逻辑。
+			const String kind = str("kind");
+			if (Node3D *n3 = Object::cast_to<Node3D>(target)) {
+				_ee3d_set_shape(n3, kind.is_empty() ? "cube" : kind, "#8a8f98");
+				RigidBody3D *body3 = _eephys_upgrade(n3, 1.0, 0.2);
+				if (body3 != nullptr) {
+					body3->set_freeze_enabled(true);
+					body3->set_freeze_mode(RigidBody3D::FREEZE_MODE_STATIC);
+					if (t != nullptr) {
+						t->target = body3;
+					}
+				}
+				return Variant();
+			}
+			if (Node2D *n2 = Object::cast_to<Node2D>(target)) {
+				RigidBody2D *body2 = _eephys_upgrade_2d(n2, 1.0, 0.2);
+				if (body2 != nullptr) {
+					body2->set_freeze_enabled(true);
+					body2->set_freeze_mode(RigidBody2D::FREEZE_MODE_STATIC);
+					if (t != nullptr) {
+						t->target = body2;
+					}
+				}
+				return Variant();
+			}
+			_warn(String::utf8("「固定不动」只能用在 2D/3D 角色上"));
+			return Variant();
+		}
+
 		if (RigidBody2D *rb2 = Object::cast_to<RigidBody2D>(target)) {
-			if (op_id == "eephys.impulse") {
-				rb2->apply_impulse(Vector2(num("x"), num("y")));
+			if (op_id == "eephys.impulse") {				rb2->apply_impulse(Vector2(num("x"), num("y")));
 			} else if (op_id == "eephys.set_velocity") {
 				rb2->set_linear_velocity(Vector2(num("x"), num("y")));
 			} else if (op_id == "eephys.set_gravity") {

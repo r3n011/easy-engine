@@ -155,6 +155,7 @@
   // 当前角色身上真实存在的造型 / 声音（引擎推过来的）
   var assetCostumes = [];
   var assetSounds = [];
+  var assetImages = [];
 
   // 把 Scratch 的造型/声音下拉换成项目里真实的资源。
   // 做法是包一层积木的 init：它建好字段后，我们把选项表替换掉。
@@ -177,6 +178,7 @@
   function patchAssetMenus() {
     patchMenu('looks_costume', 'COSTUME', function () { return assetCostumes; });
     patchMenu('sound_sounds_menu', 'SOUND_MENU', function () { return assetSounds; });
+    patchMenu('ee_3d_set_image', 'PATH', function () { return assetImages; });
   }
 
   // ---------------------------------------------------------------- 悬停解释
@@ -254,6 +256,7 @@
   window.eeSetAssets = function (assets) {
     assetCostumes = (assets && assets.costumes) || [];
     assetSounds = (assets && assets.sounds) || [];
+    assetImages = (assets && assets.images) || [];
     patchAssetMenus();
     if (window.EE_DEBUG) {
       post({ type: 'debug', text: '资源清单：造型=' + JSON.stringify(assetCostumes) +

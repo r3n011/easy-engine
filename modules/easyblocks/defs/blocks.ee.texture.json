@@ -1,0 +1,38 @@
+{
+  "extension": "ee.texture",
+  "extensionVersion": 1,
+  "description": "贴图与静态碰撞体",
+  "categories": [],
+  "blocks": [
+    {
+      "id": "core.3d.set_image",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "换成图片 %PATH%",
+      "args": {
+        "PATH": { "type": "dropdown", "default": "" }
+      },
+      "ir": {
+        "op": "ee3d.set_image",
+        "path": { "$arg": "PATH" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.phys.make_static",
+      "version": 1,
+      "category": "eephys",
+      "shape": "stack",
+      "message": "%KIND% 固定不动（当地板 / 墙 / 斜坡）",
+      "args": {
+        "KIND": { "type": "dropdown", "default": "cube" }
+      },
+      "ir": {
+        "op": "eephys.make_static",
+        "kind": { "$arg": "KIND" },
+        "target": "@self"
+      }
+    }
+  ]
+}

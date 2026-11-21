@@ -11,6 +11,7 @@
 #include "core/input/shortcut.h"
 #include "core/object/callable_mp.h"
 #include "core/io/file_access.h"
+#include "core/io/dir_access.h"
 #include "core/io/json.h"
 #include "core/os/os.h"
 #include "core/os/time.h"
@@ -270,6 +271,33 @@ void EasyBlocksEditorPlugin::_on_web_ready() {
 
 // 把角色身上真实存在的"造型"和"声音"推给网页，
 // 这样积木里的下拉菜单列的是项目里真有的东西，而不是让用户手打名字。
+// 递归扫项目里的图片，给「换成图片」的下拉用
+static void _scan_images(const String &p_dir, Array &r_out, int p_depth) {
+	if (p_depth > 3) {
+		return;
+	}
+	Ref<DirAccess> d = DirAccess::open(p_dir);
+	if (d.is_null()) {
+		return;
+	}
+	d->list_dir_begin();
+	String name = d->get_next();
+	while (!name.is_empty()) {
+		if (d->current_is_dir()) {
+			if (!name.begins_with(".") && name != "addons") {
+				_scan_images(p_dir.path_join(name), r_out, p_depth + 1);
+			}
+		} else {
+			const String ext = name.get_extension().to_lower();
+			if (ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "webp" || ext == "svg") {
+				r_out.push_back(p_dir.path_join(name));
+			}
+		}
+		name = d->get_next();
+	}
+	d->list_dir_end();
+}
+
 void EasyBlocksEditorPlugin::_push_assets_to_page() {
 	if (web_view == nullptr || !web_view->is_ready()) {
 		return;
@@ -330,6 +358,11 @@ void EasyBlocksEditorPlugin::_push_assets_to_page() {
 	Dictionary assets;
 	assets["costumes"] = costumes;
 	assets["sounds"] = sounds;
+
+	// 项目里的图片（给「换成图片」用）
+	Array images;
+	_scan_images("res://", images, 0);
+	assets["images"] = images;
 	const String js = "window.eeSetAssets && window.eeSetAssets(" +
 			JSON::stringify(assets, "", false, true) + ")";
 	if (debug_bridge) {
