@@ -21,6 +21,7 @@
 #include "scene/2d/node_2d.h"
 #include "scene/2d/sprite_2d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/light_3d.h"
 #include "scene/3d/physics/collision_shape_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
@@ -743,6 +744,21 @@ static void _ee3d_camera_follow(Node3D *p_node, double p_dist, double p_height) 
 		host->add_child(cam);
 	}
 	cam->set_current(true);
+
+	// 场景里没有灯的话，3D 物体会是黑的/看不见。
+	// 镜头积木顺手补一盏平行光，让第一次做 3D 的人能直接看到东西。
+	if (p_node->get_tree()->get_root()->find_child("EE_Light", true, false) == nullptr) {
+		DirectionalLight3D *light = memnew(DirectionalLight3D);
+		light->set_name("EE_Light");
+		light->set_rotation(Vector3(Math::deg_to_rad(real_t(-50)), Math::deg_to_rad(real_t(-30)), 0));
+		Node *host2 = p_node->get_tree()->get_current_scene();
+		if (host2 == nullptr) {
+			host2 = p_node->get_parent();
+		}
+		if (host2 != nullptr) {
+			host2->add_child(light);
+		}
+	}
 
 	const Vector3 at = p_node->get_global_position();
 	cam->set_global_position(at + Vector3(0, p_height, p_dist));

@@ -572,6 +572,36 @@ powershell -File tools\export-game.ps1 -Project test\3d -Out dist\3D演示
 **已实测**：导出的 `物理演示.exe` 双击（或 `--headless`）跑出来的结果，
 和编辑器里直接跑一模一样（`落地 y=-3.53`）。
 
+### 体积：编了 release 模板之后
+
+| 运行时 | exe 体积 |
+|---|---|
+| 编辑器二进制（临时方案） | 157.9 MB |
+| **release 模板**（`scons target=template_release`） | **65.2 MB** |
+
+模板编一次约 15 分钟，编完 `export-game.ps1` 会自动改用它。
+
+打包细节：`.godot/` 里的导入结果也要带进 `.pck`（图片转纹理、脚本缓存），
+否则导出的游戏会报 `Could not load global script cache`，以后有图片素材也会丢。
+
+### 演示：用积木做的 3D 场景
+
+`test/demo3d` 里的程序只有一个帽子 + 5 个积木：
+
+```
+当 🏳 被点击
+  变成 立方体，颜色 青
+  镜头跟随自己 距离 9 高度 5
+  转到 x 20 y 30 z 0 度
+  永远：转动 y 1.5 度
+```
+
+导出成 `旋转的立方体.exe`，双击就是一个在转的 3D 立方体（截图 `docs/shot-exported.png`）。
+
+这里补了一个默认行为：**镜头积木会顺手加一盏平行光**（场景里没有灯的话，
+3D 物体会是黑的/看不见）。对第一次做 3D 的人，这一步不该让他自己去找。
+
+
 > 说明：默认拿**编辑器二进制**当运行时（157MB，里面带着编辑器）。
 > 如果 `engine/godot/bin/godot.windows.template_release.x86_64.exe` 存在，
 > 脚本会自动改用它 —— 那才是正式发布该用的（小很多、不含编辑器）。

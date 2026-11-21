@@ -1,0 +1,48 @@
+[
+  {
+    "top": {
+      "block": "core.event.when_flag_clicked",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.3d.set_shape",
+            "inputs": {
+              "KIND": { "value": "cube" },
+              "COLOR": { "value": "#0fbd8c" }
+            },
+            "next": {
+              "block": "core.3d.camera_follow",
+              "inputs": {
+                "DIST": { "value": 9 },
+                "HEIGHT": { "value": 5 }
+              },
+              "next": {
+                "block": "core.3d.set_rotation",
+                "inputs": {
+                  "RX": { "value": 20 },
+                  "RY": { "value": 30 },
+                  "RZ": { "value": 0 }
+                },
+                "next": {
+                  "block": "core.control.forever",
+                  "inputs": {
+                    "BODY": {
+                      "stack": {
+                        "block": "core.3d.change_rotation",
+                        "inputs": {
+                          "DX": { "value": 0 },
+                          "DY": { "value": 1.5 },
+                          "DZ": { "value": 0 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node3D"]
+
+[node name="Hero" type="Node3D" parent="."]
+
+[node name="Runner" type="BlockRunner" parent="Hero"]
+program_json_path = "res://program.json"

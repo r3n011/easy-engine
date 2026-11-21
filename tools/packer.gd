@@ -52,6 +52,27 @@ func _collect(root: String, dir: String, out: Array[String]) -> void:
 		var abs_path := dir.path_join(name)
 		out.append(abs_path.trim_prefix(root).trim_prefix("/").trim_prefix("\\"))
 	for sub in d.get_directories():
-		if sub == ".godot" or sub.begins_with("."):
+		# .godot 里放的是导入结果（图片转成纹理等）和脚本缓存，导出必须带上；
+		# 只有编辑器自己的临时状态不用带。
+		if sub == ".godot":
+			_collect_godot(root, dir.path_join(sub), out)
+			continue
+		if sub.begins_with("."):
 			continue
 		_collect(root, dir.path_join(sub), out)
+
+
+func _collect_godot(root: String, dir: String, out: Array[String]) -> void:
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	for name in d.get_files():
+		if name.ends_with(".import") or name.ends_with(".uid"):
+			continue
+		var abs_path := dir.path_join(name)
+		out.append(abs_path.trim_prefix(root).trim_prefix("/").trim_prefix("\\"))
+	for sub in d.get_directories():
+		# 编辑器自己的缓存，不带
+		if sub == "editor" or sub == "shader_cache":
+			continue
+		_collect_godot(root, dir.path_join(sub), out)
