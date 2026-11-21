@@ -501,6 +501,29 @@
         "COLOR": "灯光是什么颜色",
         "ENERGY": "多亮。1 是正常，2 更亮"
       }
+    },
+    "core.looks.set_effect": {
+      "tip": "给角色加特效（现在能用的：颜色、亮度、鬼影）",
+      "args": {
+        "EFFECT": "哪种特效",
+        "VALUE": "效果大小。颜色填 0~200，鬼影填 0~100"
+      }
+    },
+    "core.looks.clear_effects": {
+      "tip": "把所有特效去掉，恢复原样",
+      "args": {}
+    },
+    "core.looks.set_layer": {
+      "tip": "让角色跑到最前面或者最后面（挡住别人/被别人挡住）",
+      "args": {
+        "MODE": "最前 / 最后 / 往前一层 / 往后一层"
+      }
+    },
+    "core.sound.set_volume": {
+      "tip": "调这个角色的音量",
+      "args": {
+        "VOLUME": "音量百分比。100 是原声，0 是静音"
+      }
     }
   }
 }

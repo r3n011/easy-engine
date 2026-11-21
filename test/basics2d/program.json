@@ -1,6 +1,6 @@
 [
   { "top": { "block": "core.event.when_flag_clicked", "inputs": { "BODY": { "stack": {
-      "block": "core.looks.say_for", "inputs": { "TEXT": { "value": "你好" }, "SECS": { "value": 0.6 } },
-      "next": { "block": "core.looks.set_size", "inputs": { "PCT": { "value": 200 }, "MODE": { "value": "set" } } }
+      "block": "core.looks.set_effect", "inputs": { "EFFECT": { "value": "color" }, "MODE": { "value": "set" }, "VALUE": { "value": 100 } },
+      "next": { "block": "core.looks.set_layer", "inputs": { "MODE": { "value": "front" } } }
   } } } } }
 ]

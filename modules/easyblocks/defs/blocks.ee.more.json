@@ -1,0 +1,25 @@
+{
+  "extension": "ee.more",
+  "extensionVersion": 1,
+  "description": "音量",
+  "categories": [],
+  "blocks": [
+    {
+      "id": "core.sound.set_volume",
+      "version": 1,
+      "category": "sound",
+      "shape": "stack",
+      "message": "音量 %MODE% %VOLUME%",
+      "args": {
+        "MODE": { "type": "dropdown", "default": "set" },
+        "VOLUME": { "type": "number", "default": 100 }
+      },
+      "ir": {
+        "op": "sound.set_volume",
+        "mode": { "$arg": "MODE" },
+        "volume": { "$arg": "VOLUME" },
+        "target": "@self"
+      }
+    }
+  ]
+}

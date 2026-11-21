@@ -1277,6 +1277,90 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 		return Variant();
 	}
 
+	if (op_id == "looks.clear_effects") {
+		if (target != nullptr && target->has_meta(StringName("ee_effects"))) {
+			target->remove_meta(StringName("ee_effects"));
+		}
+		if (CanvasItem *ci = Object::cast_to<CanvasItem>(target)) {
+			ci->set_modulate(Color(1, 1, 1, 1));
+		}
+		return Variant();
+	}
+	if (op_id == "looks.set_layer") {
+		const String mode = str("mode");
+		if (CanvasItem *ci = Object::cast_to<CanvasItem>(target)) {
+			if (mode == "front") {
+				ci->set_z_index(1000);
+			} else if (mode == "back") {
+				ci->set_z_index(-1000);
+			} else if (mode == "forward") {
+				ci->set_z_index(ci->get_z_index() + 1);
+			} else if (mode == "backward") {
+				ci->set_z_index(ci->get_z_index() - 1);
+			}
+		} else {
+			_warn(String::utf8("「移到最前/最后」目前只对 2D 角色有效"));
+		}
+		return Variant();
+	}
+	if (op_id == "looks.set_effect") {
+		if (target == nullptr) {
+			return Variant();
+		}
+		const String effect = str("effect");
+		const double value = num("value");
+		Dictionary fx;
+		if (target->has_meta(StringName("ee_effects"))) {
+			fx = target->get_meta(StringName("ee_effects"));
+		}
+
+		if (effect == "color" || effect == "brightness" || effect == "ghost") {
+			double cur = fx.get(effect, 0.0);
+			fx[effect] = (str("mode") == "change") ? cur + value : value;
+			target->set_meta(StringName("ee_effects"), fx);
+
+			// 颜色 = 色相旋转；亮度 = 明度；鬼影 = 透明度
+			const double hue = fx.get("color", 0.0);
+			const double bright = fx.get("brightness", 0.0);
+			const double ghost = fx.get("ghost", 0.0);
+			Color c = Color(1, 1, 1);
+			if (hue > 0.0) {
+				c = Color::from_hsv(fmod(hue / 200.0, 1.0), 1.0, 1.0);
+			}
+			c = Color(CLAMP(c.r * (1.0 + bright / 100.0), 0.0, 1.0),
+					CLAMP(c.g * (1.0 + bright / 100.0), 0.0, 1.0),
+					CLAMP(c.b * (1.0 + bright / 100.0), 0.0, 1.0));
+			c.a = CLAMP(1.0 - ghost / 100.0, 0.0, 1.0);
+
+			if (CanvasItem *ci = Object::cast_to<CanvasItem>(target)) {
+				ci->set_modulate(c);
+			}
+			return Variant();
+		}
+
+		// 鱼眼/旋转/像素化需要着色器，还没做 —— 只说一次，别刷屏
+		if (!warned_effect) {
+			warned_effect = true;
+			_warn(String::utf8("这个特效还没实现（颜色/亮度/鬼影可以用）"));
+		}
+		return Variant();
+	}
+	if (op_id == "sound.set_volume") {
+		Node *player = _find_audio(target, String());
+		if (player == nullptr) {
+			_warn(String::utf8("这个角色下面没有音频播放器"));
+			return Variant();
+		}
+		const double vol = CLAMP(num("volume"), 0.0, 100.0);
+		const double db = vol <= 0.0 ? -80.0 : Math::linear_to_db(vol / 100.0);
+		if (AudioStreamPlayer *p = Object::cast_to<AudioStreamPlayer>(player)) {
+			p->set_volume_db(real_t(db));
+		} else if (AudioStreamPlayer2D *p2 = Object::cast_to<AudioStreamPlayer2D>(player)) {
+			p2->set_volume_db(real_t(db));
+		}
+		return Variant();
+	}
+
 	// ---- 外观 ----
 	if (op_id == "looks.say") {
 		// 2D 用 Label，3D 用 Label3D —— 都挂在角色下面，跟着走

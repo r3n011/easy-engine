@@ -94,6 +94,7 @@ private:
 	bool started = false;
 	int trace_count = 0;
 	bool warned_list_show = false;
+	bool warned_effect = false;
 
 	void _clear_threads();
 	RunnerThread *_new_thread(Node *p_target, const Array &p_body);

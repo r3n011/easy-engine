@@ -119,6 +119,12 @@
     { s: 'operator_contains', e: 'core.operator.contains', inputs: { STRING1: 'S', STRING2: 'SUB' } },
 
     // ---- 变量 ----
+    { s: 'looks_seteffectto', e: 'core.looks.set_effect', fields: { EFFECT: 'EFFECT', MODE: 'MODE' }, inputs: { VALUE: 'VALUE' } },
+    { s: 'looks_changeeffectby', e: 'core.looks.set_effect', fields: { EFFECT: 'EFFECT' }, const: { MODE: 'change' }, inputs: { CHANGE: 'VALUE' } },
+    { s: 'looks_cleargraphiceffects', e: 'core.looks.clear_effects' },
+    { s: 'looks_gotofrontback', e: 'core.looks.set_layer', fields: { FRONT_BACK: 'MODE' } },
+    { s: 'looks_goforwardbackward', e: 'core.looks.set_layer', fields: { FORWARD_BACKWARD: 'MODE' } },
+    { s: 'sound_setvolumeto', e: 'core.sound.set_volume', const: { MODE: 'set' }, inputs: { VOLUME: 'VOLUME' } },
     { s: 'data_variable', e: 'core.data.var', fields: { VARIABLE: 'NAME' } },
     { s: 'data_setvariableto', e: 'core.data.set_var', fields: { VARIABLE: 'NAME' }, inputs: { VALUE: 'VALUE' } },
     { s: 'data_changevariableby', e: 'core.data.change_var', fields: { VARIABLE: 'NAME' }, inputs: { VALUE: 'DELTA' } },
