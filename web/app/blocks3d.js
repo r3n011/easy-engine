@@ -83,6 +83,42 @@
     num('DIST', 12), num('HEIGHT', 6)
   ]);
 
+  // ---- 物理（3D）----
+  var PHYS = '#7B61FF';
+
+  function physDef(message, args) {
+    return {
+      init: function () {
+        this.jsonInit({
+          message0: message,
+          args0: args,
+          previousStatement: null,
+          nextStatement: null,
+          inputsInline: true,
+          colour: PHYS
+        });
+      }
+    };
+  }
+
+  Blockly.Blocks['ee_phys_upgrade'] = physDef('变成物理物体 质量 %1 弹性 %2', [
+    num('MASS', 1), num('BOUNCE', 0.3)
+  ]);
+  Blockly.Blocks['ee_phys_impulse'] = physDef('施加冲量 x %1 y %2 z %3', [
+    num('X', 0), num('Y', 10), num('Z', 0)
+  ]);
+  Blockly.Blocks['ee_phys_set_velocity'] = physDef('速度设为 x %1 y %2 z %3', [
+    num('X', 0), num('Y', 0), num('Z', 0)
+  ]);
+  Blockly.Blocks['ee_phys_set_gravity'] = physDef('重力倍率设为 %1', [num('SCALE', 1)]);
+  Blockly.Blocks['ee_phys_freeze'] = physDef('%1 物理运动', [
+    {
+      type: 'field_dropdown', name: 'MODE', options: [
+        ['冻结', 'freeze'], ['解冻', 'unfreeze']
+      ]
+    }
+  ]);
+
   // ---- 工具箱：加一个「3D」分类 ----
   // default_toolbox 是一段 XML 字符串，直接往末尾插一个分类最省事，
   // 也不用去改 vendor 里的原文件（以后重装 scratch-blocks 不会丢）。
@@ -98,6 +134,13 @@
         '<block type="ee_3d_change_rotation" id="ee3d_drot"></block>' +
         '<block type="ee_3d_set_scale" id="ee3d_scale"></block>' +
         '<block type="ee_3d_set_color" id="ee3d_color"></block>' +
+        '</category>' +
+        '<category name="物理" id="eephys" colour="' + PHYS + '" secondaryColour="#5A45C8">' +
+        '<block type="ee_phys_upgrade" id="ee_phys_up"></block>' +
+        '<block type="ee_phys_impulse" id="ee_phys_imp"></block>' +
+        '<block type="ee_phys_set_velocity" id="ee_phys_vel"></block>' +
+        '<block type="ee_phys_set_gravity" id="ee_phys_grav"></block>' +
+        '<block type="ee_phys_freeze" id="ee_phys_freeze"></block>' +
         '</category>';
       // 插在「变量」分类前面（别塞到最后，会被 Extensions 挤到看不见）
       var anchor = '<category name="%{BKY_CATEGORY_VARIABLES}"';
@@ -118,6 +161,13 @@
     { s: 'ee_3d_change_rotation', e: 'core.3d.change_rotation', fields: { DX: 'DX', DY: 'DY', DZ: 'DZ' } },
     { s: 'ee_3d_set_scale', e: 'core.3d.set_scale', fields: { S: 'S' } },
     { s: 'ee_3d_set_color', e: 'core.3d.set_color', fields: { COLOR: 'COLOR' } },
-    { s: 'ee_3d_camera_follow', e: 'core.3d.camera_follow', fields: { DIST: 'DIST', HEIGHT: 'HEIGHT' } }
+    { s: 'ee_3d_camera_follow', e: 'core.3d.camera_follow', fields: { DIST: 'DIST', HEIGHT: 'HEIGHT' } },
+
+    // 物理
+    { s: 'ee_phys_upgrade', e: 'core.phys.upgrade', fields: { MASS: 'MASS', BOUNCE: 'BOUNCE' } },
+    { s: 'ee_phys_impulse', e: 'core.phys.impulse', fields: { X: 'X', Y: 'Y', Z: 'Z' } },
+    { s: 'ee_phys_set_velocity', e: 'core.phys.set_velocity', fields: { X: 'X', Y: 'Y', Z: 'Z' } },
+    { s: 'ee_phys_set_gravity', e: 'core.phys.set_gravity', fields: { SCALE: 'SCALE' } },
+    { s: 'ee_phys_freeze', e: 'core.phys.freeze', fields: { MODE: 'MODE' } }
   ];
 })();

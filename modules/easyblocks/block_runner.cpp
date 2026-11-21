@@ -20,10 +20,14 @@
 #include "scene/2d/node_2d.h"
 #include "scene/2d/sprite_2d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/physics/collision_shape_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
+#include "scene/3d/physics/rigid_body_3d.h"
+#include "scene/resources/3d/box_shape_3d.h"
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/material.h"
+#include "scene/resources/physics_material.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
@@ -691,6 +695,73 @@ static void _ee3d_camera_follow(Node3D *p_node, double p_dist, double p_height) 
 	cam->look_at(at, Vector3::UP);
 }
 
+// 把一个普通 Node3D 角色"换"成 RigidBody3D：
+// 原地替换（保持父节点、位置、子节点），造型网格和积木运行器都搬过去。
+// 这样积木里的"自己"就变成了真正的物理体，重力和碰撞全交给 Godot。
+static RigidBody3D *_eephys_upgrade(Node3D *p_node, double p_mass, double p_bounce) {
+	if (p_node == nullptr) {
+		return nullptr;
+	}
+	if (RigidBody3D *already = Object::cast_to<RigidBody3D>(p_node)) {
+		already->set_mass(p_mass);
+		Ref<PhysicsMaterial> mat = already->get_physics_material_override();
+		if (mat.is_null()) {
+			mat.instantiate();
+		}
+		mat->set_bounce(real_t(p_bounce));
+		already->set_physics_material_override(mat);
+		return already;
+	}
+
+	Node *parent = p_node->get_parent();
+	if (parent == nullptr) {
+		return nullptr;
+	}
+
+	// 没有造型就先给一个，免得物理体是隐形的
+	if (_ee3d_mesh(p_node, false) == nullptr) {
+		_ee3d_set_shape(p_node, "cube", "#7B61FF");
+	}
+
+	RigidBody3D *body = memnew(RigidBody3D);
+	body->set_name(p_node->get_name());
+	body->set_transform(p_node->get_transform());
+	body->set_mass(real_t(p_mass));
+
+	Ref<PhysicsMaterial> mat;
+	mat.instantiate();
+	mat->set_bounce(real_t(p_bounce));
+	mat->set_friction(0.8);
+	body->set_physics_material_override(mat);
+
+	CollisionShape3D *shape = memnew(CollisionShape3D);
+	Ref<BoxShape3D> box;
+	box.instantiate();
+	box->set_size(Vector3(1, 1, 1));
+	shape->set_shape(box);
+	body->add_child(shape);
+
+	// 把子节点（网格 + 积木运行器）搬过去
+	Vector<Node *> kids;
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		kids.push_back(p_node->get_child(i));
+	}
+	for (int i = 0; i < kids.size(); i++) {
+		p_node->remove_child(kids[i]);
+		body->add_child(kids[i]);
+	}
+
+	const int index = p_node->get_index();
+	const String old_name = p_node->get_name();
+	parent->add_child(body);
+	parent->move_child(body, index);
+	parent->remove_child(p_node);
+	body->set_name(old_name); // 老节点腾出名字后再改回来，否则会变成 Hero2
+	p_node->queue_free();
+
+	return body;
+}
+
 
 void BlockRunner::_apply_costume(Node *p_target, const String &p_name, const String &p_mode) {
 	if (p_target == nullptr) {
@@ -1278,6 +1349,45 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 		}
 		if (op_id == "ee3d.camera_follow") {
 			_ee3d_camera_follow(n3, num("dist"), num("height"));
+			return Variant();
+		}
+	}
+
+	// ---- 物理（3D）----
+	if (op_id.begins_with("eephys.")) {
+		if (op_id == "eephys.upgrade") {
+			Node3D *n3 = Object::cast_to<Node3D>(target);
+			if (n3 == nullptr) {
+				_warn(String::utf8("「变成物理物体」只能用在 3D 角色上"));
+				return Variant();
+			}
+			RigidBody3D *body = _eephys_upgrade(n3, num("mass"), num("bounce"));
+			if (body != nullptr && t != nullptr) {
+				// 角色被换成了新节点，后续积木要作用在它身上
+				t->target = body;
+			}
+			return Variant();
+		}
+
+		RigidBody3D *rb = Object::cast_to<RigidBody3D>(target);
+		if (rb == nullptr) {
+			_warn(String::utf8("这个角色还不是物理体，先用「变成物理物体」"));
+			return Variant();
+		}
+		if (op_id == "eephys.impulse") {
+			rb->apply_impulse(Vector3(num("x"), num("y"), num("z")));
+			return Variant();
+		}
+		if (op_id == "eephys.set_velocity") {
+			rb->set_linear_velocity(Vector3(num("x"), num("y"), num("z")));
+			return Variant();
+		}
+		if (op_id == "eephys.set_gravity") {
+			rb->set_gravity_scale(real_t(num("scale")));
+			return Variant();
+		}
+		if (op_id == "eephys.freeze") {
+			rb->set_freeze_enabled(str("mode") == "freeze");
 			return Variant();
 		}
 	}

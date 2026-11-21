@@ -1,0 +1,99 @@
+{
+  "extension": "ee.physics3d",
+  "extensionVersion": 1,
+  "description": "3D 物理积木 —— 刚体、重力、冲量。Scratch 的\"碰到就反弹\"是假的，这里是真物理",
+  "categories": [
+    {
+      "id": "eephys",
+      "name": "物理",
+      "color": "#7B61FF"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "core.phys.upgrade",
+      "version": 1,
+      "category": "eephys",
+      "shape": "stack",
+      "message": "变成物理物体，质量 %MASS% 弹性 %BOUNCE%",
+      "args": {
+        "MASS": { "type": "number", "default": 1 },
+        "BOUNCE": { "type": "number", "default": 0.3 }
+      },
+      "ir": {
+        "op": "eephys.upgrade",
+        "mass": { "$arg": "MASS" },
+        "bounce": { "$arg": "BOUNCE" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.phys.impulse",
+      "version": 1,
+      "category": "eephys",
+      "shape": "stack",
+      "message": "施加冲量 x %X% y %Y% z %Z%",
+      "args": {
+        "X": { "type": "number", "default": 0 },
+        "Y": { "type": "number", "default": 10 },
+        "Z": { "type": "number", "default": 0 }
+      },
+      "ir": {
+        "op": "eephys.impulse",
+        "x": { "$arg": "X" },
+        "y": { "$arg": "Y" },
+        "z": { "$arg": "Z" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.phys.set_velocity",
+      "version": 1,
+      "category": "eephys",
+      "shape": "stack",
+      "message": "速度设为 x %X% y %Y% z %Z%",
+      "args": {
+        "X": { "type": "number", "default": 0 },
+        "Y": { "type": "number", "default": 0 },
+        "Z": { "type": "number", "default": 0 }
+      },
+      "ir": {
+        "op": "eephys.set_velocity",
+        "x": { "$arg": "X" },
+        "y": { "$arg": "Y" },
+        "z": { "$arg": "Z" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.phys.set_gravity",
+      "version": 1,
+      "category": "eephys",
+      "shape": "stack",
+      "message": "重力倍率设为 %SCALE%",
+      "args": {
+        "SCALE": { "type": "number", "default": 1 }
+      },
+      "ir": {
+        "op": "eephys.set_gravity",
+        "scale": { "$arg": "SCALE" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.phys.freeze",
+      "version": 1,
+      "category": "eephys",
+      "shape": "stack",
+      "message": "%MODE% 物理运动",
+      "args": {
+        "MODE": { "type": "dropdown", "default": "freeze" }
+      },
+      "ir": {
+        "op": "eephys.freeze",
+        "mode": { "$arg": "MODE" },
+        "target": "@self"
+      }
+    }
+  ]
+}

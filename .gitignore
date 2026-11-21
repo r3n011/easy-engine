@@ -55,3 +55,6 @@ web/package/
 web/v13/
 web/old/
 web/*.tgz
+
+# 导出的游戏（体积大，随时可重新生成）
+/dist/

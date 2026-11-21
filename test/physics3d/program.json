@@ -1,0 +1,23 @@
+[
+  {
+    "top": {
+      "block": "core.event.when_flag_clicked",
+      "inputs": {
+        "BODY": {
+          "stack": {
+            "block": "core.3d.set_shape",
+            "inputs": { "KIND": { "value": "cube" }, "COLOR": { "value": "#7B61FF" } },
+            "next": {
+              "block": "core.3d.set_position",
+              "inputs": { "X": { "value": 0 }, "Y": { "value": 5 }, "Z": { "value": 0 } },
+              "next": {
+                "block": "core.phys.upgrade",
+                "inputs": { "MASS": { "value": 1 }, "BOUNCE": { "value": 0.5 } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+]

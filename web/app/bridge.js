@@ -179,6 +179,45 @@
     patchMenu('sound_sounds_menu', 'SOUND_MENU', function () { return assetSounds; });
   }
 
+  // ---------------------------------------------------------------- 悬停解释
+  //
+  // 面向教育：每个积木、每个参数，鼠标停一下就能看到"这是干什么的"。
+  // 文案在 modules/easyblocks/defs/tips.zh.json，构建时生成 defs_tips.js。
+  var TIPS = (window.EE_TIPS && window.EE_TIPS.blocks) || {};
+
+  function applyTips() {
+    for (var type in byScratch) {
+      var entry = byScratch[type];
+      var def = Blockly.Blocks ? Blockly.Blocks[type] : null;
+      if (!def || !def.init || def.__eeTipPatched) continue;
+      var info = TIPS[entry.e];
+      if (!info) continue;
+
+      (function (origInit, entryRef, infoRef) {
+        def.init = function () {
+          origInit.call(this);
+          var lines = [];
+          if (infoRef.tip) lines.push(infoRef.tip);
+
+          var args = infoRef.args || {};
+          var fields = entryRef.fields || {};
+          for (var sf in fields) {
+            var hint = args[fields[sf]];
+            if (!hint) continue;
+            var f = this.getField ? this.getField(sf) : null;
+            if (f && f.setTooltip) f.setTooltip(hint);
+            lines.push('· ' + hint);
+          }
+          if (this.setTooltip && lines.length) {
+            this.setTooltip(lines.join('\n'));
+          }
+        };
+      })(def.init, entry, info);
+
+      def.__eeTipPatched = true;
+    }
+  }
+
   // 引擎调：更新资源清单
   window.eeSetAssets = function (assets) {
     assetCostumes = (assets && assets.costumes) || [];
@@ -677,6 +716,7 @@
   window.eeAttach = function (pWorkspace) {
     workspace = pWorkspace;
     patchAssetMenus();
+    applyTips();
 
     // ---- 分类回调：变量 / 列表 / 自制积木 ----
     // 工具箱里这两个分类是 custom="VARIABLE" / custom="PROCEDURE"，
