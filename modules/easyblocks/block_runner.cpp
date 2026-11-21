@@ -9,7 +9,7 @@
 #include "values.h"
 
 #include "core/io/json.h"
-#include "core/io/image.h"
+#include "core/input/input.h"`n#include "core/io/image.h"
 #include "core/io/resource_loader.h"
 #include "core/config/engine.h"
 #include "core/io/file_access.h"
@@ -316,6 +316,7 @@ void BlockRunner::_step(double p_delta) {
 		return;
 	}
 	now += p_delta;
+	last_delta = p_delta;
 	frame_count++;
 
 	// 1. 恢复等待条件已满足的线程
@@ -1228,6 +1229,36 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 		}
 		return Variant(0);
 	}
+	if (op_id == "motion.arrow_move") {
+		// 按方向键移动：一次调用走一小步。
+		// 配合「永远」就是"用方向键控制角色"，孩子只需要两块积木。
+		Input *input = Input::get_singleton();
+		Vector2 dir;
+		if (input->is_action_pressed("ui_left")) {
+			dir.x -= 1;
+		}
+		if (input->is_action_pressed("ui_right")) {
+			dir.x += 1;
+		}
+		if (input->is_action_pressed("ui_up")) {
+			dir.y -= 1;
+		}
+		if (input->is_action_pressed("ui_down")) {
+			dir.y += 1;
+		}
+		if (dir == Vector2()) {
+			return Variant();
+		}
+		Node2D *n2 = Object::cast_to<Node2D>(target);
+		if (n2 == nullptr) {
+			_warn(String::utf8("「用方向键移动」目前只支持 2D 角色"));
+			return Variant();
+		}
+		// speed 是"每秒多少像素"，乘 delta 让它不受帧率影响
+		const real_t step = real_t(num("speed") * last_delta);
+		n2->set_position(n2->get_position() + dir.normalized() * step);
+		return Variant();
+	}
 	if (op_id == "motion.bounce") {
 		// 只在 2D 有意义：碰到视口边缘就反弹（把方向关于边缘镜像）
 		Node2D *n2 = Object::cast_to<Node2D>(target);
@@ -1685,6 +1716,21 @@ Variant BlockRunner::_exec(RunnerThread *t, const Dictionary &p_op) {
 					}
 				}
 			}
+			return Variant();
+		}
+
+		if (op_id == "ee3d.set_light") {
+			// 光照：镜头积木已经自动建了一盏 EE_Light，这里只改颜色和亮度
+			Node *found = n3->get_tree() != nullptr
+					? n3->get_tree()->get_root()->find_child("EE_Light", true, false)
+					: nullptr;
+			DirectionalLight3D *light = Object::cast_to<DirectionalLight3D>(found);
+			if (light == nullptr) {
+				_warn(String::utf8("场景里还没有灯，先用「镜头跟随自己」"));
+				return Variant();
+			}
+			light->set_color(Color::html(str("color")));
+			light->set_param(Light3D::PARAM_ENERGY, real_t(num("energy")));
 			return Variant();
 		}
 

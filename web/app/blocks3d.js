@@ -151,6 +151,15 @@
     }
   ]);
 
+  // 方向键移动：放进 Scratch 的「运动」分类里（不新开分类，界面才不乱）
+  Blockly.Blocks['ee_arrow_move'] = stackDef('用方向键移动，速度 %1', [num('SPEED', 300)]);
+
+  // 3D 光照
+  Blockly.Blocks['ee_3d_light'] = stackDef('光照颜色 %1 亮度 %2', [
+    { type: 'field_dropdown', name: 'COLOR', options: COLOR_OPTIONS },
+    num('ENERGY', 1)
+  ]);
+
   // ---- 工具箱：加一个「3D」分类 ----
   // default_toolbox 是一段 XML 字符串，直接往末尾插一个分类最省事，
   // 也不用去改 vendor 里的原文件（以后重装 scratch-blocks 不会丢）。
@@ -168,6 +177,7 @@
         '<block type="ee_3d_set_color" id="ee3d_color"></block>' +
         '<block type="ee_3d_burst" id="ee3d_burst"></block>' +
         '<block type="ee_3d_set_image" id="ee3d_image"></block>' +
+        '<block type="ee_3d_light" id="ee3d_light"></block>' +
         '</category>' +
         '<category name="物理" id="eephys" colour="' + PHYS + '" secondaryColour="#5A45C8">' +
         '<block type="ee_phys_when_touching" id="ee_phys_touch"></block>' +
@@ -182,6 +192,10 @@
       // 去掉「Extensions」分类：里面全是还没实现的扩展积木，
       // 留着只会让孩子拖出来发现不能用（"少而全"比"多而空"重要）。
       tb = tb.replace(/<category name="Extensions"[\s\S]*?<\/category>/, '');
+
+      // 「方向键移动」塞进运动分类的最前面（不新开分类，界面才不乱）
+      tb = tb.replace(/(<category name="%\{BKY_CATEGORY_MOTION\}"[^>]*>)/,
+        '$1<block type="ee_arrow_move" id="ee3d_arrow"></block>');
 
       var anchor = '<category name="%{BKY_CATEGORY_VARIABLES}"';
       Blockly.Blocks.defaultToolbox = (tb.indexOf(anchor) >= 0)
@@ -212,6 +226,8 @@
     { s: 'ee_phys_when_touching', e: 'core.phys.when_touching', nextFrom: 'BODY', fields: { OTHER: 'OTHER' } },
     { s: 'ee_3d_burst', e: 'core.3d.burst', fields: { COLOR: 'COLOR', AMOUNT: 'AMOUNT' } },
     { s: 'ee_3d_set_image', e: 'core.3d.set_image', fields: { PATH: 'PATH' } },
-    { s: 'ee_phys_make_static', e: 'core.phys.make_static', fields: { KIND: 'KIND' } }
+    { s: 'ee_phys_make_static', e: 'core.phys.make_static', fields: { KIND: 'KIND' } },
+    { s: 'ee_arrow_move', e: 'core.motion.arrow_move', fields: { SPEED: 'SPEED' } },
+    { s: 'ee_3d_light', e: 'core.3d.set_light', fields: { COLOR: 'COLOR', ENERGY: 'ENERGY' } }
   ];
 })();

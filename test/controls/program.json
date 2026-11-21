@@ -1,0 +1,7 @@
+[
+  { "top": { "block": "core.event.when_flag_clicked", "inputs": { "BODY": { "stack": {
+      "block": "core.control.forever", "inputs": { "BODY": { "stack": {
+        "block": "core.motion.arrow_move", "inputs": { "SPEED": { "value": 300 } }
+      } } }
+  } } } } }
+]

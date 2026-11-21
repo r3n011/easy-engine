@@ -1,7 +1,9 @@
 [
   { "top": { "block": "core.event.when_flag_clicked", "inputs": { "BODY": { "stack": {
       "block": "core.3d.set_shape", "inputs": { "KIND": { "value": "cube" }, "COLOR": { "value": "#ff4d4d" } },
-      "next": { "block": "core.3d.set_image", "inputs": { "PATH": { "value": "res://dot.png" } },
-        "next": { "block": "core.phys.make_static", "inputs": { "KIND": { "value": "cube" } } } }
+      "next": { "block": "core.3d.camera_follow", "inputs": { "DIST": { "value": 8 }, "HEIGHT": { "value": 4 } },
+        "next": { "block": "core.3d.set_light", "inputs": { "COLOR": { "value": "#4c97ff" }, "ENERGY": { "value": 2 } },
+          "next": { "block": "core.3d.set_image", "inputs": { "PATH": { "value": "res://dot.png" } },
+            "next": { "block": "core.phys.make_static", "inputs": { "KIND": { "value": "cube" } } } } } }
   } } } } }
 ]

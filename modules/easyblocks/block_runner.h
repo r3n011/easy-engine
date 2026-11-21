@@ -87,6 +87,7 @@ private:
 	Vector<ObjectID> clones; // 本运行器造出来的克隆体
 
 	double now = 0.0;
+	double last_delta = 0.016;
 	int frame_count = 0;
 	Array errors;
 	Array warnings;

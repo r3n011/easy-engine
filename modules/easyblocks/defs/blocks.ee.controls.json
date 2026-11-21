@@ -1,0 +1,40 @@
+{
+  "extension": "ee.controls",
+  "extensionVersion": 1,
+  "description": "方向键移动 + 3D 光照",
+  "categories": [],
+  "blocks": [
+    {
+      "id": "core.motion.arrow_move",
+      "version": 1,
+      "category": "motion",
+      "shape": "stack",
+      "message": "用方向键移动，速度 %SPEED%",
+      "args": {
+        "SPEED": { "type": "number", "default": 300 }
+      },
+      "ir": {
+        "op": "motion.arrow_move",
+        "speed": { "$arg": "SPEED" },
+        "target": "@self"
+      }
+    },
+    {
+      "id": "core.3d.set_light",
+      "version": 1,
+      "category": "ee3d",
+      "shape": "stack",
+      "message": "光照颜色 %COLOR% 亮度 %ENERGY%",
+      "args": {
+        "COLOR": { "type": "dropdown", "default": "#ffffff" },
+        "ENERGY": { "type": "number", "default": 1 }
+      },
+      "ir": {
+        "op": "ee3d.set_light",
+        "color": { "$arg": "COLOR" },
+        "energy": { "$arg": "ENERGY" },
+        "target": "@self"
+      }
+    }
+  ]
+}
